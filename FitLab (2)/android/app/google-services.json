@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "477070524005",
+    "project_id": "fitlab-6a86c",
+    "storage_bucket": "fitlab-6a86c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477070524005:android:5d88a9465abc5b2d9a908c",
+        "android_client_info": {
+          "package_name": "com.example.fitlab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqKEA61KAURE9nNnRB_ishXhAUR0QaViI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477070524005:android:e40ea0d603587b809a908c",
+        "android_client_info": {
+          "package_name": "com.example.fitlab_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqKEA61KAURE9nNnRB_ishXhAUR0QaViI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
