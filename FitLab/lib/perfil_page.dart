@@ -1,15 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 
-class PerfilPage extends StatelessWidget {
+class PerfilPage extends StatefulWidget {
   const PerfilPage({super.key});
 
-  Future<void> _logout(BuildContext context) async {
+  @override
+  State<PerfilPage> createState() => _PerfilPageState();
+}
+
+class _PerfilPageState extends State<PerfilPage> {
+  User? user = FirebaseAuth.instance.currentUser;
+  Map<String, dynamic>? userData;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarDadosUsuario();
+  }
+
+  Future<void> _carregarDadosUsuario() async {
+    if (user == null) {
+      setState(() {
+        loading = false;
+      });
+      return;
+    }
+
+    final doc = await FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(user!.uid)
+        .get();
+
+    if (doc.exists) {
+      setState(() {
+        userData = doc.data();
+        loading = false;
+      });
+    } else {
+      setState(() {
+        userData = null;
+        loading = false;
+      });
+    }
+  }
+
+  void _logout() async {
     await FirebaseAuth.instance.signOut();
-    // Redireciona para tela de login e remove todas as páginas anteriores
-    Navigator.pushAndRemoveUntil(
-      context,
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const Login()),
       (route) => false,
     );
@@ -17,52 +57,71 @@ class PerfilPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (user == null || userData == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Perfil')),
+        body: const Center(
+          child: Text('Nenhum usuário logado.'),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Perfil'),
-        backgroundColor: Colors.black,
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
+        actions: [
+          IconButton(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout, color: Colors.red),
+            tooltip: 'Sair',
+          )
+        ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Informações do Usuário',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 28),
-                const SizedBox(width: 10),
-                Text(user?.displayName ?? 'Sem nome',
-                    style: const TextStyle(fontSize: 18)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.email, size: 28),
-                const SizedBox(width: 10),
-                Text(user?.email ?? 'Sem e-mail',
-                    style: const TextStyle(fontSize: 18)),
-              ],
-            ),
+            Text('Nome:', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(userData!['nome'] ?? 'Não informado',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Text('Email:', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(userData!['email'] ?? user!.email ?? 'Não informado',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Text('Data de nascimento:',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(userData!['nascimento'] ?? 'Não informado',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const Spacer(),
             Center(
-              child: ElevatedButton.icon(
-                onPressed: () => _logout(context),
-                icon: const Icon(Icons.logout),
-                label: const Text('Sair'),
+              child: ElevatedButton(
+                onPressed: _logout,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                 ),
+                child: const Text('Sair', style: TextStyle(fontSize: 16)),
               ),
             ),
           ],

@@ -1,3 +1,4 @@
+import 'package:fitlab/perfil_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -32,7 +33,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeContent(),
     const Calendario(),
     const WorkoutPage(),
-    const Login(),
+    const PerfilPage(),
   ];
 
   void _onItemTapped(int index) {

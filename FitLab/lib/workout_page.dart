@@ -1,37 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'workout_timer_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-final FirebaseFirestore firestore = FirebaseFirestore.instance;
+class WorkoutPage extends StatefulWidget {
+  const WorkoutPage({super.key});
 
-Future<void> salvarFicha(
-    String nomeFicha, List<Map<String, String>> exercicios) async {
-  await firestore.collection('fichas').doc(nomeFicha).set({
-    'exercicios': exercicios,
-  });
-}
-
-Future<void> renomearFicha(String antigoNome, String novoNome) async {
-  final docAntigo = firestore.collection('fichas').doc(antigoNome);
-  final docNovo = firestore.collection('fichas').doc(novoNome);
-
-  final snapshot = await docAntigo.get();
-  if (snapshot.exists) {
-    await docNovo.set(snapshot.data()!);
-    await docAntigo.delete();
-  }
-}
-
-Future<Map<String, List<Map<String, String>>>> carregarFichas() async {
-  final snapshot = await firestore.collection('fichas').get();
-  Map<String, List<Map<String, String>>> fichas = {};
-  for (var doc in snapshot.docs) {
-    final data = doc.data();
-    fichas[doc.id] = List<Map<String, String>>.from(data['exercicios'] ?? []);
-  }
-  return fichas;
+  @override
+  State<WorkoutPage> createState() => _WorkoutPageState();
 }
 
 class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
@@ -43,6 +21,7 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
       'x-rapidapi-host': 'exercisedb.p.rapidapi.com',
       'x-rapidapi-key': '53f6945e8emshde297b41f425b3dp1f2a91jsn919d691f472e',
     };
+
     final url = 'https://exercisedb.p.rapidapi.com/exercises/name/$query';
 
     try {
@@ -58,10 +37,11 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
           };
         }).toList();
       } else {
+        debugPrint('Erro na resposta da API: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      debugPrint('Erro ao buscar: $e');
+      debugPrint('Erro ao buscar exercícios: $e');
       return [];
     }
   }
@@ -73,8 +53,12 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
     return FutureBuilder<List<Map<String, String>>>(
       future: fetchExercises(query),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('Nenhum exercício encontrado'));
+        }
 
         final results = snapshot.data!;
         return ListView.builder(
@@ -82,14 +66,18 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
           itemBuilder: (context, index) {
             final exercise = results[index];
             return ListTile(
-              leading: Image.network(
-                exercise['image']!,
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.fitness_center),
-              ),
-              title: Text(exercise['name']!),
+              leading:
+                  (exercise['image'] != null && exercise['image']!.isNotEmpty)
+                      ? Image.network(
+                          exercise['image']!,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.fitness_center),
+                        )
+                      : const Icon(Icons.fitness_center),
+              title: Text(exercise['name'] ?? ''),
               onTap: () => close(context, exercise),
             );
           },
@@ -99,38 +87,93 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
   }
 
   @override
-  Widget buildResults(BuildContext context) => buildSuggestions(context);
+  Widget buildResults(BuildContext context) {
+    return buildSuggestions(context);
+  }
 
   @override
-  List<Widget>? buildActions(BuildContext context) => [
-        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
-      ];
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () => query = '',
+      ),
+    ];
+  }
 
   @override
-  Widget? buildLeading(BuildContext context) => IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () => close(context, null),
-      );
-}
-
-class WorkoutPage extends StatefulWidget {
-  const WorkoutPage({super.key});
-
-  @override
-  State<WorkoutPage> createState() => _WorkoutPageState();
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
 }
 
 class _WorkoutPageState extends State<WorkoutPage> {
-  final Map<String, List<Map<String, String>>> fichas = {
-    'Ficha A': [],
-    'Ficha B': []
-  };
-  String fichaSelecionada = 'Ficha A';
+  final Map<String, List<Map<String, String>>> fichas = {};
+  String fichaSelecionada = '';
 
   final nomeController = TextEditingController();
   final pesoController = TextEditingController();
   final seriesController = TextEditingController();
   final novaFichaController = TextEditingController();
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    carregarFichasFirestore();
+  }
+
+  Future<void> salvarFichasFirestore() async {
+    if (user == null) return;
+    final uid = user!.uid;
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
+    final fichasRef = userDoc.collection('fichas');
+
+    // Apaga fichas antigas
+    final oldFichas = await fichasRef.get();
+    for (final doc in oldFichas.docs) {
+      await doc.reference.delete();
+    }
+
+    // Cria fichas novas
+    for (var entry in fichas.entries) {
+      await fichasRef.doc(entry.key).set({
+        'name': entry.key,
+        'exercicios': entry.value,
+      });
+    }
+  }
+
+  Future<void> carregarFichasFirestore() async {
+    if (user == null) return;
+    final uid = user!.uid;
+    final fichasSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('fichas')
+        .get();
+
+    setState(() {
+      fichas.clear();
+      for (final doc in fichasSnapshot.docs) {
+        final nome = doc['name'];
+        final exercicios = List<Map<String, String>>.from(
+          (doc['exercicios'] as List).map((e) => Map<String, String>.from(e)),
+        );
+        fichas[nome] = exercicios;
+      }
+      if (fichas.isNotEmpty) {
+        fichaSelecionada = fichas.keys.first;
+      } else {
+        fichas['Ficha A'] = [];
+        fichaSelecionada = 'Ficha A';
+      }
+    });
+  }
 
   void _adicionarFicha() {
     showDialog(
@@ -147,52 +190,18 @@ class _WorkoutPageState extends State<WorkoutPage> {
               child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
-              final nome = novaFichaController.text.trim();
-              if (nome.isNotEmpty && !fichas.containsKey(nome)) {
+              final nomeFicha = novaFichaController.text.trim();
+              if (nomeFicha.isNotEmpty && !fichas.containsKey(nomeFicha)) {
                 setState(() {
-                  fichas[nome] = [];
-                  fichaSelecionada = nome;
+                  fichas[nomeFicha] = [];
+                  fichaSelecionada = nomeFicha;
                   novaFichaController.clear();
                 });
+                salvarFichasFirestore();
               }
               Navigator.pop(context);
             },
             child: const Text('Adicionar'),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _renomearFicha() {
-    novaFichaController.text = fichaSelecionada;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Renomear ficha'),
-        content: TextField(
-          controller: novaFichaController,
-          decoration: const InputDecoration(labelText: 'Novo nome da ficha'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              final novoNome = novaFichaController.text.trim();
-              if (novoNome.isNotEmpty && !fichas.containsKey(novoNome)) {
-                final exercicios = fichas[fichaSelecionada]!;
-                await renomearFicha(fichaSelecionada, novoNome);
-                setState(() {
-                  fichas.remove(fichaSelecionada);
-                  fichas[novoNome] = exercicios;
-                  fichaSelecionada = novoNome;
-                });
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Salvar'),
           )
         ],
       ),
@@ -204,6 +213,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     nomeController.text = currentList[index]['name'] ?? '';
     pesoController.text = currentList[index]['weight'] ?? '';
     seriesController.text = currentList[index]['series'] ?? '';
+
     _mostrarDialogo(index: index);
   }
 
@@ -248,6 +258,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                   fichas[fichaSelecionada]![index] = exercicio;
                 }
               });
+              salvarFichasFirestore();
               Navigator.pop(context);
             },
             child: const Text('Salvar'),
@@ -267,11 +278,82 @@ class _WorkoutPageState extends State<WorkoutPage> {
       setState(() {
         fichas[fichaSelecionada]?.add(result);
       });
+      salvarFichasFirestore();
     }
   }
 
   void _excluirExercicio(int index) {
     setState(() => fichas[fichaSelecionada]?.removeAt(index));
+    salvarFichasFirestore();
+  }
+
+  void _editarFicha() {
+    novaFichaController.text = fichaSelecionada;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar nome da ficha'),
+        content: TextField(
+          controller: novaFichaController,
+          decoration: const InputDecoration(labelText: 'Novo nome'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final novoNome = novaFichaController.text.trim();
+              if (novoNome.isNotEmpty &&
+                  novoNome != fichaSelecionada &&
+                  !fichas.containsKey(novoNome)) {
+                setState(() {
+                  final exercicios = fichas.remove(fichaSelecionada)!;
+                  fichas[novoNome] = exercicios;
+                  fichaSelecionada = novoNome;
+                  novaFichaController.clear();
+                });
+                salvarFichasFirestore();
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _excluirFicha() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir ficha'),
+        content: Text('Tem certeza que deseja excluir "$fichaSelecionada"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                fichas.remove(fichaSelecionada);
+                fichaSelecionada =
+                    fichas.isNotEmpty ? fichas.keys.first : 'Ficha A';
+                if (!fichas.containsKey(fichaSelecionada)) {
+                  fichas[fichaSelecionada] = [];
+                }
+              });
+              salvarFichasFirestore();
+              Navigator.pop(context);
+            },
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -285,7 +367,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final listaExercicios = fichas[fichaSelecionada]!;
+    final listaExercicios = fichas[fichaSelecionada] ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -295,21 +377,37 @@ class _WorkoutPageState extends State<WorkoutPage> {
         elevation: 0,
         foregroundColor: Colors.black,
         actions: [
-          IconButton(onPressed: _adicionarFicha, icon: const Icon(Icons.add)),
-          IconButton(onPressed: _renomearFicha, icon: const Icon(Icons.edit)),
+          IconButton(onPressed: _adicionarFicha, icon: const Icon(Icons.add))
         ],
       ),
       body: Column(
         children: [
           const SizedBox(height: 10),
-          DropdownButton<String>(
-            value: fichaSelecionada,
-            onChanged: (nova) {
-              if (nova != null) setState(() => fichaSelecionada = nova);
-            },
-            items: fichas.keys
-                .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                .toList(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              DropdownButton<String>(
+                value: fichaSelecionada,
+                onChanged: (nova) {
+                  if (nova != null) setState(() => fichaSelecionada = nova);
+                },
+                items: fichas.keys
+                    .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                    .toList(),
+              ),
+              const SizedBox(width: 10),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  if (value == 'editar') _editarFicha();
+                  if (value == 'excluir') _excluirFicha();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'editar', child: Text('Editar Ficha')),
+                  PopupMenuItem(value: 'excluir', child: Text('Excluir Ficha')),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Expanded(
@@ -354,10 +452,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const WorkoutTimerPage()),
-            );
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const WorkoutTimerPage()));
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.black,
