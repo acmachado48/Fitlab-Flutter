@@ -1,6 +1,86 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'workout_timer_page.dart';
+
+class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
+  @override
+  String get searchFieldLabel => 'Buscar exercício...';
+
+  Future<List<Map<String, String>>> fetchExercises(String query) async {
+    const headers = {
+      'x-rapidapi-host': 'exercisedb.p.rapidapi.com',
+      'x-rapidapi-key': '53f6945e8emshde297b41f425b3dp1f2a91jsn919d691f472e',
+    };
+    final url = 'https://exercisedb.p.rapidapi.com/exercises/name/$query';
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers);
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        return data.map<Map<String, String>>((e) {
+          return {
+            'name': e['name'] ?? '',
+            'weight': '',
+            'series': '3x10',
+            'image': e['gifUrl'] ?? '',
+          };
+        }).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Erro ao buscar: $e');
+      return [];
+    }
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) return const Center(child: Text('Digite para buscar'));
+
+    return FutureBuilder<List<Map<String, String>>>(
+      future: fetchExercises(query),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final results = snapshot.data!;
+        return ListView.builder(
+          itemCount: results.length,
+          itemBuilder: (context, index) {
+            final exercise = results[index];
+            return ListTile(
+              leading: Image.network(
+                exercise['image']!,
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.fitness_center),
+              ),
+              title: Text(exercise['name']!),
+              onTap: () => close(context, exercise),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => buildSuggestions(context);
+
+  @override
+  List<Widget>? buildActions(BuildContext context) => [
+        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
+      ];
+
+  @override
+  Widget? buildLeading(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => close(context, null),
+      );
+}
 
 class WorkoutPage extends StatefulWidget {
   const WorkoutPage({super.key});
@@ -10,168 +90,123 @@ class WorkoutPage extends StatefulWidget {
 }
 
 class _WorkoutPageState extends State<WorkoutPage> {
-  bool isFichaASelected = true;
+  final Map<String, List<Map<String, String>>> fichas = {
+    'Ficha A': [],
+    'Ficha B': [],
+  };
+  String fichaSelecionada = 'Ficha A';
 
-  List<Map<String, String>> fichaA = [
-    {
-      'name': 'LegPress 45°',
-      'weight': '25kg',
-      'series': '3×15',
-      'image': 'assets/LegPress.jpg',
-    },
-    {
-      'name': 'Banco Adutor',
-      'weight': '34kg',
-      'series': '3×15',
-      'image': 'assets/abdutora.jpg',
-    },
-    {
-      'name': 'Abdominal Oblíquo',
-      'weight': '',
-      'series': '3×22',
-      'image': 'assets/abdominal.jpg',
-    },
-  ];
+  final nomeController = TextEditingController();
+  final pesoController = TextEditingController();
+  final seriesController = TextEditingController();
+  final novaFichaController = TextEditingController();
 
-  List<Map<String, String>> fichaB = [
-    {
-      'name': 'Crucifixo',
-      'weight': '4kg',
-      'series': '3×15',
-      'image': 'assets/crucifixo.jpg',
-    },
-    {
-      'name': 'Tríceps Testa',
-      'weight': '8kg',
-      'series': '3×15',
-      'image': 'assets/triceps.jpg',
-    },
-    {
-      'name': 'Elíptico',
-      'weight': '',
-      'series': '30min',
-      'image': 'assets/Eliptico.jpg',
-    },
-  ];
-
-  final TextEditingController nomeController = TextEditingController();
-  final TextEditingController pesoController = TextEditingController();
-  final TextEditingController seriesController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _carregarExercicios();
-  }
-
-  Future<void> _carregarExercicios() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final doc =
-        await FirebaseFirestore.instance.collection('treinos').doc(uid).get();
-    if (doc.exists) {
-      final data = doc.data()!;
-      setState(() {
-        fichaA = List<Map<String, String>>.from(data['fichaA'] ?? fichaA);
-        fichaB = List<Map<String, String>>.from(data['fichaB'] ?? fichaB);
-      });
-    }
-  }
-
-  Future<void> _salvarExercicios() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    await FirebaseFirestore.instance.collection('treinos').doc(uid).set({
-      'fichaA': fichaA,
-      'fichaB': fichaB,
-    });
-  }
-
-  void _mostrarDialogoAdicionarOuEditar({int? editIndex}) {
-    final currentList = isFichaASelected ? fichaA : fichaB;
-
-    if (editIndex != null) {
-      nomeController.text = currentList[editIndex]['name'] ?? '';
-      pesoController.text = currentList[editIndex]['weight'] ?? '';
-      seriesController.text = currentList[editIndex]['series'] ?? '';
-    } else {
-      nomeController.clear();
-      pesoController.clear();
-      seriesController.clear();
-    }
-
+  void _adicionarFicha() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-            editIndex == null ? 'Adicionar Exercício' : 'Editar Exercício'),
+        title: const Text('Nova ficha'),
+        content: TextField(
+          controller: novaFichaController,
+          decoration: const InputDecoration(labelText: 'Nome da ficha'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              final nomeFicha = novaFichaController.text.trim();
+              if (nomeFicha.isNotEmpty && !fichas.containsKey(nomeFicha)) {
+                setState(() {
+                  fichas[nomeFicha] = [];
+                  fichaSelecionada = nomeFicha;
+                  novaFichaController.clear();
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Adicionar'),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _editarExercicio(int index) {
+    final currentList = fichas[fichaSelecionada]!;
+    nomeController.text = currentList[index]['name'] ?? '';
+    pesoController.text = currentList[index]['weight'] ?? '';
+    seriesController.text = currentList[index]['series'] ?? '';
+
+    _mostrarDialogo(index: index);
+  }
+
+  void _mostrarDialogo({int? index}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(index == null ? 'Adicionar Exercício' : 'Editar Exercício'),
         content: SingleChildScrollView(
           child: Column(
             children: [
               TextField(
-                controller: nomeController,
-                decoration:
-                    const InputDecoration(labelText: 'Nome do exercício'),
-              ),
+                  controller: nomeController,
+                  decoration: const InputDecoration(labelText: 'Nome')),
               TextField(
-                controller: pesoController,
-                decoration: const InputDecoration(labelText: 'Peso (opcional)'),
-              ),
+                  controller: pesoController,
+                  decoration: const InputDecoration(labelText: 'Peso')),
               TextField(
-                controller: seriesController,
-                decoration:
-                    const InputDecoration(labelText: 'Séries e repetições'),
-              ),
+                  controller: seriesController,
+                  decoration: const InputDecoration(labelText: 'Séries')),
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
-              if (nomeController.text.isEmpty || seriesController.text.isEmpty)
-                return;
+              final exercicio = {
+                'name': nomeController.text,
+                'weight': pesoController.text,
+                'series': seriesController.text,
+                'image': index != null
+                    ? fichas[fichaSelecionada]![index]['image'] ?? ''
+                    : '',
+              };
               setState(() {
-                final novoExercicio = {
-                  'name': nomeController.text,
-                  'weight': pesoController.text,
-                  'series': seriesController.text,
-                  'image': editIndex != null
-                      ? currentList[editIndex]['image'] ?? 'assets/default.jpg'
-                      : 'assets/default.jpg',
-                };
-                if (editIndex == null) {
-                  currentList.add(novoExercicio);
+                if (index == null) {
+                  fichas[fichaSelecionada]!.add(exercicio);
                 } else {
-                  currentList[editIndex] = novoExercicio;
+                  fichas[fichaSelecionada]![index] = exercicio;
                 }
               });
-              _salvarExercicios();
-              Navigator.of(context).pop();
+              Navigator.pop(context);
             },
-            child: Text(editIndex == null ? 'Adicionar' : 'Salvar'),
+            child: const Text('Salvar'),
           ),
         ],
       ),
     );
   }
 
-  void _adicionarExercicio() => _mostrarDialogoAdicionarOuEditar();
-  void _editarExercicio(int index) =>
-      _mostrarDialogoAdicionarOuEditar(editIndex: index);
+  void _adicionarExercicio() async {
+    final result = await showSearch<Map<String, String>?>(
+      context: context,
+      delegate: ExerciseSearch(),
+    );
+
+    if (result != null) {
+      setState(() {
+        fichas[fichaSelecionada]?.add(result);
+      });
+    }
+  }
 
   void _excluirExercicio(int index) {
-    setState(() {
-      if (isFichaASelected) {
-        fichaA.removeAt(index);
-      } else {
-        fichaB.removeAt(index);
-      }
-    });
-    _salvarExercicios();
+    setState(() => fichas[fichaSelecionada]?.removeAt(index));
   }
 
   @override
@@ -179,12 +214,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
     nomeController.dispose();
     pesoController.dispose();
     seriesController.dispose();
+    novaFichaController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentList = isFichaASelected ? fichaA : fichaB;
+    final listaExercicios = fichas[fichaSelecionada]!;
 
     return Scaffold(
       appBar: AppBar(
@@ -193,93 +229,53 @@ class _WorkoutPageState extends State<WorkoutPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
+        actions: [
+          IconButton(onPressed: _adicionarFicha, icon: const Icon(Icons.add))
+        ],
       ),
       body: Column(
         children: [
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () => setState(() => isFichaASelected = true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isFichaASelected ? Colors.black : Colors.white,
-                  side: const BorderSide(color: Colors.black),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                ),
-                child: Text(
-                  'Ficha A',
-                  style: TextStyle(
-                    color: isFichaASelected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () => setState(() => isFichaASelected = false),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      !isFichaASelected ? Colors.black : Colors.white,
-                  side: const BorderSide(color: Colors.black),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                ),
-                child: Text(
-                  'Ficha B',
-                  style: TextStyle(
-                    color: !isFichaASelected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+          DropdownButton<String>(
+            value: fichaSelecionada,
+            onChanged: (nova) {
+              if (nova != null) setState(() => fichaSelecionada = nova);
+            },
+            items: fichas.keys
+                .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                .toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: currentList.length,
+              itemCount: listaExercicios.length,
               itemBuilder: (context, index) {
-                final exercise = currentList[index];
+                final e = listaExercicios[index];
                 return ListTile(
-                  leading: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(
-                            exercise['image'] ?? 'assets/default.jpg'),
-                        fit: BoxFit.cover,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  title: Text(exercise['name'] ?? '',
+                  leading: (e['image'] != null && e['image']!.isNotEmpty)
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            e['image']!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.fitness_center),
+                          ),
+                        )
+                      : const Icon(Icons.fitness_center),
+                  title: Text(e['name'] ?? '',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    '${exercise['series'] ?? ''} ${exercise['weight'] ?? ''}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                  subtitle: Text('${e['series']} ${e['weight']}'),
                   trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'Editar') {
-                        _editarExercicio(index);
-                      } else if (value == 'Excluir') {
-                        _excluirExercicio(index);
-                      }
+                    onSelected: (val) {
+                      if (val == 'Editar') _editarExercicio(index);
+                      if (val == 'Excluir') _excluirExercicio(index);
                     },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                          value: 'Editar', child: Text('Editar')),
-                      const PopupMenuItem(
-                          value: 'Excluir', child: Text('Excluir')),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'Editar', child: Text('Editar')),
+                      PopupMenuItem(value: 'Excluir', child: Text('Excluir')),
                     ],
                   ),
                 );
@@ -291,7 +287,10 @@ class _WorkoutPageState extends State<WorkoutPage> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const WorkoutTimerPage()));
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.black,
             minimumSize: const Size(double.infinity, 50),
@@ -305,11 +304,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _adicionarExercicio,
         backgroundColor: Colors.black,
-        child: const Text('+',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 30)),
+        child: const Text('+', style: TextStyle(fontSize: 30)),
       ),
     );
   }
