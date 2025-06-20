@@ -2,6 +2,37 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'workout_timer_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+Future<void> salvarFicha(
+    String nomeFicha, List<Map<String, String>> exercicios) async {
+  await firestore.collection('fichas').doc(nomeFicha).set({
+    'exercicios': exercicios,
+  });
+}
+
+Future<void> renomearFicha(String antigoNome, String novoNome) async {
+  final docAntigo = firestore.collection('fichas').doc(antigoNome);
+  final docNovo = firestore.collection('fichas').doc(novoNome);
+
+  final snapshot = await docAntigo.get();
+  if (snapshot.exists) {
+    await docNovo.set(snapshot.data()!);
+    await docAntigo.delete();
+  }
+}
+
+Future<Map<String, List<Map<String, String>>>> carregarFichas() async {
+  final snapshot = await firestore.collection('fichas').get();
+  Map<String, List<Map<String, String>>> fichas = {};
+  for (var doc in snapshot.docs) {
+    final data = doc.data();
+    fichas[doc.id] = List<Map<String, String>>.from(data['exercicios'] ?? []);
+  }
+  return fichas;
+}
 
 class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
   @override
@@ -42,9 +73,9 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
     return FutureBuilder<List<Map<String, String>>>(
       future: fetchExercises(query),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator());
-        }
+
         final results = snapshot.data!;
         return ListView.builder(
           itemCount: results.length,
@@ -92,7 +123,7 @@ class WorkoutPage extends StatefulWidget {
 class _WorkoutPageState extends State<WorkoutPage> {
   final Map<String, List<Map<String, String>>> fichas = {
     'Ficha A': [],
-    'Ficha B': [],
+    'Ficha B': []
   };
   String fichaSelecionada = 'Ficha A';
 
@@ -116,11 +147,11 @@ class _WorkoutPageState extends State<WorkoutPage> {
               child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
-              final nomeFicha = novaFichaController.text.trim();
-              if (nomeFicha.isNotEmpty && !fichas.containsKey(nomeFicha)) {
+              final nome = novaFichaController.text.trim();
+              if (nome.isNotEmpty && !fichas.containsKey(nome)) {
                 setState(() {
-                  fichas[nomeFicha] = [];
-                  fichaSelecionada = nomeFicha;
+                  fichas[nome] = [];
+                  fichaSelecionada = nome;
                   novaFichaController.clear();
                 });
               }
@@ -133,12 +164,46 @@ class _WorkoutPageState extends State<WorkoutPage> {
     );
   }
 
+  void _renomearFicha() {
+    novaFichaController.text = fichaSelecionada;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Renomear ficha'),
+        content: TextField(
+          controller: novaFichaController,
+          decoration: const InputDecoration(labelText: 'Novo nome da ficha'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              final novoNome = novaFichaController.text.trim();
+              if (novoNome.isNotEmpty && !fichas.containsKey(novoNome)) {
+                final exercicios = fichas[fichaSelecionada]!;
+                await renomearFicha(fichaSelecionada, novoNome);
+                setState(() {
+                  fichas.remove(fichaSelecionada);
+                  fichas[novoNome] = exercicios;
+                  fichaSelecionada = novoNome;
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Salvar'),
+          )
+        ],
+      ),
+    );
+  }
+
   void _editarExercicio(int index) {
     final currentList = fichas[fichaSelecionada]!;
     nomeController.text = currentList[index]['name'] ?? '';
     pesoController.text = currentList[index]['weight'] ?? '';
     seriesController.text = currentList[index]['series'] ?? '';
-
     _mostrarDialogo(index: index);
   }
 
@@ -230,7 +295,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
         elevation: 0,
         foregroundColor: Colors.black,
         actions: [
-          IconButton(onPressed: _adicionarFicha, icon: const Icon(Icons.add))
+          IconButton(onPressed: _adicionarFicha, icon: const Icon(Icons.add)),
+          IconButton(onPressed: _renomearFicha, icon: const Icon(Icons.edit)),
         ],
       ),
       body: Column(
@@ -288,8 +354,10 @@ class _WorkoutPageState extends State<WorkoutPage> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const WorkoutTimerPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WorkoutTimerPage()),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.black,
