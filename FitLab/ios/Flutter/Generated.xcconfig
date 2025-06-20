@@ -1,6 +1,6 @@
 // This is a generated file; do not edit or check into version control.
-FLUTTER_ROOT=/home/ubuntu/flutter
-FLUTTER_APPLICATION_PATH=/home/ubuntu/projects/click_counter
+FLUTTER_ROOT=/Users/anacarolinamachado/projeto app/Projeto Final/flutter_application_final/flutter
+FLUTTER_APPLICATION_PATH=/Users/anacarolinamachado/PF LDDM/Projeto-LDDM/FitLab
 COCOAPODS_PARALLEL_CODE_SIGN=true
 FLUTTER_TARGET=lib/main.dart
 FLUTTER_BUILD_DIR=build

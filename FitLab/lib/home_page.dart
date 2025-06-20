@@ -31,7 +31,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const HomeContent(),
-    const Calendario(),
+    const CalendarioPage(),
     const WorkoutPage(),
     const PerfilPage(),
   ];

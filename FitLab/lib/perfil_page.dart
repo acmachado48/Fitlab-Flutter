@@ -23,9 +23,7 @@ class _PerfilPageState extends State<PerfilPage> {
 
   Future<void> _carregarDadosUsuario() async {
     if (user == null) {
-      setState(() {
-        loading = false;
-      });
+      setState(() => loading = false);
       return;
     }
 
@@ -45,6 +43,67 @@ class _PerfilPageState extends State<PerfilPage> {
         loading = false;
       });
     }
+  }
+
+  Future<int> _contarCheckInsDoMes() async {
+    final uid = user?.uid;
+    if (uid == null) return 0;
+
+    final now = DateTime.now();
+    final mes = now.month.toString().padLeft(2, '0');
+    final ano = now.year;
+    final inicio = '$ano-$mes-01';
+    final fim = '$ano-$mes-31';
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('checkins')
+        .where('date', isGreaterThanOrEqualTo: inicio)
+        .where('date', isLessThanOrEqualTo: fim)
+        .get();
+
+    return snapshot.docs.length;
+  }
+
+  Future<void> _editarMetaMensal() async {
+    final controller = TextEditingController(
+      text: userData?['metaMensal']?.toString() ?? '',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar meta mensal'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nova meta (número de dias)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final novaMeta = int.tryParse(controller.text.trim());
+              if (novaMeta != null && user != null) {
+                await FirebaseFirestore.instance
+                    .collection('usuarios')
+                    .doc(user!.uid)
+                    .update({'metaMensal': novaMeta});
+                await _carregarDadosUsuario();
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _logout() async {
@@ -110,6 +169,49 @@ class _PerfilPageState extends State<PerfilPage> {
             Text(userData!['nascimento'] ?? 'Não informado',
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+
+            // Meta mensal + check-ins
+            FutureBuilder<int>(
+              future: _contarCheckInsDoMes(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Padding(
+                    padding: EdgeInsets.only(top: 20),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final totalCheckins = snapshot.data!;
+                final meta = userData?['metaMensal'] ?? 0;
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Meta do mês: $meta dias',
+                              style: Theme.of(context).textTheme.titleMedium),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 20),
+                            tooltip: 'Editar meta',
+                            onPressed: _editarMetaMensal,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text('Check-ins realizados: $totalCheckins dias',
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                );
+              },
+            ),
+
             const Spacer(),
             Center(
               child: ElevatedButton(
