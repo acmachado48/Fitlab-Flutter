@@ -1,0 +1,2 @@
+C:/Users/carol/Downloads/FitLab (2)/android/app/.cxx/Debug/42365w5i/x86/CMakeFiles/edit_cache.dir
+C:/Users/carol/Downloads/FitLab (2)/android/app/.cxx/Debug/42365w5i/x86/CMakeFiles/rebuild_cache.dir
