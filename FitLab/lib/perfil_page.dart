@@ -3,73 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 
-class PerfilPage extends StatefulWidget {
-  const PerfilPage({super.key});
+class PerfilPage extends StatelessWidget {
+  final User? user = FirebaseAuth.instance.currentUser;
 
-  @override
-  State<PerfilPage> createState() => _PerfilPageState();
-}
+  PerfilPage({super.key});
 
-class _PerfilPageState extends State<PerfilPage> {
-  User? user = FirebaseAuth.instance.currentUser;
-  Map<String, dynamic>? userData;
-  bool loading = true;
-
-  @override
-  void initState() {
-    
-    super.initState();
-    _carregarDadosUsuario();
-  }
-
-  Future<void> _carregarDadosUsuario() async {
-    if (user == null) {
-      setState(() => loading = false);
-      return;
-    }
-
-    final doc = await FirebaseFirestore.instance
-        .collection('usuarios')
-        .doc(user!.uid)
-        .get();
-
-    if (doc.exists) {
-      setState(() {
-        userData = doc.data();
-        loading = false;
-      });
-    } else {
-      setState(() {
-        userData = null;
-        loading = false;
-      });
-    }
-  }
-
-  Future<int> _contarCheckInsDoMes() async {
-    final uid = user?.uid;
-    if (uid == null) return 0;
-
-    final now = DateTime.now();
-    final mes = now.month.toString().padLeft(2, '0');
-    final ano = now.year;
-    final inicio = '$ano-$mes-01';
-    final fim = '$ano-$mes-31';
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('checkins')
-        .where('date', isGreaterThanOrEqualTo: inicio)
-        .where('date', isLessThanOrEqualTo: fim)
-        .get();
-
-    return snapshot.docs.length;
-  }
-
-  Future<void> _editarMetaMensal() async {
+  Future<void> _editarMetaMensal(
+      BuildContext context, Map<String, dynamic> userData) async {
     final controller = TextEditingController(
-      text: userData?['metaMensal']?.toString() ?? '',
+      text: userData['metaMensal']?.toString() ?? '',
     );
 
     await showDialog(
@@ -79,9 +21,7 @@ class _PerfilPageState extends State<PerfilPage> {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Nova meta (número de dias)',
-          ),
+          decoration: const InputDecoration(labelText: 'Nova meta (dias)'),
         ),
         actions: [
           TextButton(
@@ -91,14 +31,30 @@ class _PerfilPageState extends State<PerfilPage> {
           ElevatedButton(
             onPressed: () async {
               final novaMeta = int.tryParse(controller.text.trim());
-              if (novaMeta != null && user != null) {
+              if (novaMeta == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Informe um número válido')),
+                );
+                return;
+              }
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Usuário não está logado')),
+                );
+                return;
+              }
+
+              try {
                 await FirebaseFirestore.instance
                     .collection('usuarios')
                     .doc(user!.uid)
                     .update({'metaMensal': novaMeta});
-                await _carregarDadosUsuario();
+                Navigator.pop(context);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erro ao salvar meta: $e')),
+                );
               }
-              Navigator.pop(context);
             },
             child: const Text('Salvar'),
           ),
@@ -107,129 +63,187 @@ class _PerfilPageState extends State<PerfilPage> {
     );
   }
 
-  void _logout() async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const Login()),
-      (route) => false,
+  void _confirmarLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair'),
+        content: const Text('Deseja realmente sair da conta?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await FirebaseAuth.instance.signOut();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const Login()),
+                (route) => false,
+              );
+            },
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (user == null || userData == null) {
+    if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Perfil')),
-        body: const Center(
-          child: Text('Nenhum usuário logado.'),
-        ),
+        body: const Center(child: Text('Nenhum usuário logado.')),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perfil'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-        actions: [
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout, color: Colors.red),
-            tooltip: 'Sair',
-          )
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Nome:', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(userData!['nome'] ?? 'Não informado',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Text('Email:', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(userData!['email'] ?? user!.email ?? 'Não informado',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Text('Data de nascimento:',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(userData!['nascimento'] ?? 'Não informado',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(user!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-            // Meta mensal + check-ins
-            FutureBuilder<int>(
-              future: _contarCheckInsDoMes(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Perfil')),
+            body: const Center(child: Text('Dados do usuário não encontrados.')),
+          );
+        }
 
-                final totalCheckins = snapshot.data!;
-                final meta = userData?['metaMensal'] ?? 0;
+        final userData = snapshot.data!.data() as Map<String, dynamic>;
 
-                return Padding(
-                  padding: const EdgeInsets.only(top: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Meta do mês: $meta dias',
-                              style: Theme.of(context).textTheme.titleMedium),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 20),
-                            tooltip: 'Editar meta',
-                            onPressed: _editarMetaMensal,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text('Check-ins realizados: $totalCheckins dias',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                    ],
+        final totalCheckins = userData['totalCheckinsMes'] ?? 0;
+        final meta = userData['metaMensal'] ?? 0;
+        final progresso =
+            meta == 0 ? 0.0 : (totalCheckins / meta).clamp(0.0, 1.0);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Perfil'),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            elevation: 1,
+            actions: [
+              IconButton(
+                onPressed: () => _confirmarLogout(context),
+                icon: const Icon(Icons.logout, color: Colors.red),
+                tooltip: 'Sair',
+              )
+            ],
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.blue.shade100,
+                  child: Text(
+                    userData['nome']?[0].toUpperCase() ?? '?',
+                    style: const TextStyle(fontSize: 32, color: Colors.black),
                   ),
-                );
-              },
-            ),
-
-            const Spacer(),
-            Center(
-              child: ElevatedButton(
-                onPressed: _logout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('Sair', style: TextStyle(fontSize: 16)),
-              ),
+                const SizedBox(height: 16),
+                Text(userData['nome'] ?? '',
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(userData['email'] ?? '',
+                    style: const TextStyle(fontSize: 16, color: Colors.grey)),
+                const Divider(height: 32),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cake, color: Colors.pink),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Nascimento',
+                                style: TextStyle(color: Colors.grey)),
+                            Text(userData['nascimento'] ?? 'Não informado',
+                                style: const TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Meta mensal',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 20),
+                              onPressed: () =>
+                                  _editarMetaMensal(context, userData),
+                              tooltip: 'Editar meta',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Meta: $meta dias'),
+                        Text('Check‑ins: $totalCheckins dias'),
+                        const SizedBox(height: 12),
+                        LinearProgressIndicator(
+                          value: progresso,
+                          backgroundColor: Colors.grey[300],
+                          color: Colors.green,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Progresso: ${(progresso * 100).toStringAsFixed(1)}%',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () => _confirmarLogout(context),
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sair da conta'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -33,7 +33,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeContent(),
     const CalendarioPage(),
     const WorkoutPage(),
-    const PerfilPage(),
+     PerfilPage(),
   ];
 
   void _onItemTapped(int index) {

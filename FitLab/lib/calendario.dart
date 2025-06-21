@@ -4,16 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 class CalendarioPage extends StatefulWidget {
-  const CalendarioPage({super.key});
+  final void Function()? onCheckinAtualizado;
+
+  const CalendarioPage({super.key, this.onCheckinAtualizado});
 
   @override
   State<CalendarioPage> createState() => _CalendarioPageState();
 }
 
 class _CalendarioPageState extends State<CalendarioPage> {
-  DateTime selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  Map<String, bool> checkins =
-      {}; // mapa data 'yyyy-MM-dd' -> check-in (true/false)
+  DateTime selectedMonth =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+  Map<String, bool> checkins = {};
   User? user = FirebaseAuth.instance.currentUser;
   bool loading = true;
 
@@ -23,38 +25,52 @@ class _CalendarioPageState extends State<CalendarioPage> {
     _carregarCheckinsMes();
   }
 
-  Future<void> _carregarCheckinsMes() async {
-    if (user == null) return;
+Future<void> _carregarCheckinsMes() async {
+  if (user == null) return;
 
-    setState(() => loading = true);
+  setState(() => loading = true);
 
-    final uid = user!.uid;
-    final monthStart = DateTime(selectedMonth.year, selectedMonth.month, 1);
-    final monthEnd = DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
+  final uid = user!.uid;
 
-    // Datas formatadas para consulta
-    final inicioStr = DateFormat('yyyy-MM-dd').format(monthStart);
-    final fimStr = DateFormat('yyyy-MM-dd').format(monthEnd);
+  // intervalo do mês selecionado
+  final monthStart = DateTime(selectedMonth.year, selectedMonth.month, 1);
+  final monthEnd   = DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('checkins')
-        .where('date', isGreaterThanOrEqualTo: inicioStr)
-        .where('date', isLessThanOrEqualTo: fimStr)
-        .get();
+  final inicioStr = DateFormat('yyyy-MM-dd').format(monthStart);
+  final fimStr    = DateFormat('yyyy-MM-dd').format(monthEnd);
 
-    final Map<String, bool> dados = {};
-    for (var doc in snapshot.docs) {
-      final date = doc['date'] as String;
-      final checkin = doc['checked'] as bool? ?? false;
-      dados[date] = checkin;
-    }
+  // ---- consulta Firestore ----
+  final snapshot = await FirebaseFirestore.instance
+      .collection('usuarios')
+      .doc(uid)
+      .collection('checkins')
+      .where('date', isGreaterThanOrEqualTo: inicioStr)
+      .where('date', isLessThanOrEqualTo:   fimStr)
+      // .where('checked', isEqualTo: true)   // ← mantenha se criar o índice
+      .get();
 
+  print('Check‑ins carregados no mês $inicioStr a $fimStr: ${snapshot.docs.length}');
+
+  final Map<String, bool> dados = {};
+  for (var doc in snapshot.docs) {
+    final date    = doc['date']    as String;
+    final checkin = doc['checked'] as bool? ?? false;
+    dados[date]   = checkin;
+  }
+
+  setState(() {
+    checkins = dados;
+    loading  = false;
+  });
+}
+
+
+  void _changeMonth(int delta) {
     setState(() {
-      checkins = dados;
-      loading = false;
+      selectedMonth =
+          DateTime(selectedMonth.year, selectedMonth.month + delta, 1);
     });
+    _carregarCheckinsMes();
   }
 
   Future<void> _toggleCheckin(DateTime dia) async {
@@ -63,7 +79,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
     final uid = user!.uid;
     final diaStr = DateFormat('yyyy-MM-dd').format(dia);
     final docRef = FirebaseFirestore.instance
-        .collection('users')
+        .collection('usuarios')
         .doc(uid)
         .collection('checkins')
         .doc(diaStr);
@@ -76,17 +92,49 @@ class _CalendarioPageState extends State<CalendarioPage> {
       'checked': novoStatus,
       'timestamp': FieldValue.serverTimestamp(),
     });
+    print('Check‑in para $diaStr setado para $novoStatus');
 
     setState(() {
       checkins[diaStr] = novoStatus;
     });
-  }
 
-  void _changeMonth(int delta) {
-    setState(() {
-      selectedMonth = DateTime(selectedMonth.year, selectedMonth.month + delta);
-    });
-    _carregarCheckinsMes();
+    // ---------- atualiza contagem mensal ----------
+    final mes = selectedMonth.month.toString().padLeft(2, '0');
+    final ano = selectedMonth.year;
+    final inicio = '$ano-$mes-01';
+    final lastDay =
+        DateTime(selectedMonth.year, selectedMonth.month + 1, 0).day;
+    final fim = '$ano-$mes-${lastDay.toString().padLeft(2, '0')}';
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+  .collection('usuarios')
+  .doc(uid)
+  .collection('checkins')
+  .where('date', isGreaterThanOrEqualTo: inicio)
+  .where('date', isLessThanOrEqualTo: fim)
+  .where('checked', isEqualTo: true)
+  .get();
+
+
+      final totalCheckinsMes = snapshot.docs.length;
+
+      await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .update({'totalCheckinsMes': totalCheckinsMes});
+
+      print('Campo totalCheckinsMes atualizado: $totalCheckinsMes');
+    } catch (e) {
+      print('Erro ao contar check‑ins do mês: $e');
+    }
+
+    // Recarrega o mês para garantir consistência visual
+    await _carregarCheckinsMes();
+
+    if (widget.onCheckinAtualizado != null) {
+      widget.onCheckinAtualizado!();
+    }
   }
 
   @override
@@ -96,16 +144,18 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calendário de Check-ins'),
+        title: const Text('Calendário de Check‑ins'),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.arrow_back_ios),
             onPressed: () => _changeMonth(-1),
+            tooltip: 'Mês anterior',
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward_ios),
             onPressed: () => _changeMonth(1),
+            tooltip: 'Próximo mês',
           ),
         ],
       ),
@@ -126,7 +176,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                     padding: const EdgeInsets.all(8),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7, // 7 dias da semana
+                      crossAxisCount: 7,
                       crossAxisSpacing: 4,
                       mainAxisSpacing: 4,
                     ),
@@ -135,7 +185,8 @@ class _CalendarioPageState extends State<CalendarioPage> {
                       final dia = index + 1;
                       final date = DateTime(
                           selectedMonth.year, selectedMonth.month, dia);
-                      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+                      final dateStr =
+                          DateFormat('yyyy-MM-dd').format(date);
                       final checkinFeito = checkins[dateStr] ?? false;
 
                       return GestureDetector(
@@ -175,7 +226,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                 const Padding(
                   padding: EdgeInsets.all(8.0),
                   child: Text(
-                    'Toque em um dia para marcar/desmarcar check-in.',
+                    'Toque em um dia para marcar/desmarcar check‑in.',
                     style: TextStyle(fontSize: 16),
                   ),
                 ),
