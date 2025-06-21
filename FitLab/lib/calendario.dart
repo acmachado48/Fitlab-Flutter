@@ -18,6 +18,9 @@ class _CalendarioPageState extends State<CalendarioPage> {
   DateTime focusedDay = DateTime.now();
   User? user = FirebaseAuth.instance.currentUser;
 
+  int sequenciaAtual = 0;
+  int maiorSequencia = 0;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +53,60 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
     setState(() {
       checkins = dados;
+    });
+
+    _calcularSequencias();
+  }
+
+  void _calcularSequencias() {
+    if (checkins.isEmpty) {
+      setState(() {
+        sequenciaAtual = 0;
+        maiorSequencia = 0;
+      });
+      return;
+    }
+
+    // Datas ordenadas dos check-ins marcados
+    List<DateTime> diasCheckin = checkins.entries
+        .where((e) => e.value == true)
+        .map((e) => DateTime.parse(e.key))
+        .toList();
+    diasCheckin.sort();
+
+    // Calcular maior sequência
+    int maior = 0;
+    int contador = 1;
+    for (int i = 1; i < diasCheckin.length; i++) {
+      final anterior = diasCheckin[i - 1];
+      final atual = diasCheckin[i];
+      if (atual.difference(anterior).inDays == 1) {
+        contador++;
+      } else {
+        if (contador > maior) maior = contador;
+        contador = 1;
+      }
+    }
+    if (contador > maior) maior = contador;
+
+    // Calcular sequência atual (de hoje para trás)
+    int atualStreak = 0;
+    DateTime diaAtual = DateTime.now();
+    diaAtual = DateTime(diaAtual.year, diaAtual.month, diaAtual.day);
+
+    while (true) {
+      final diaStr = DateFormat('yyyy-MM-dd').format(diaAtual);
+      if (checkins[diaStr] == true) {
+        atualStreak++;
+        diaAtual = diaAtual.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    setState(() {
+      maiorSequencia = maior;
+      sequenciaAtual = atualStreak;
     });
   }
 
@@ -84,9 +141,8 @@ class _CalendarioPageState extends State<CalendarioPage> {
       ),
     ));
 
-    _carregarCheckinsMes(focusedDay);
-
     await _atualizarTotalCheckinsMes();
+    await _carregarCheckinsMes(focusedDay);
   }
 
   Future<void> _atualizarTotalCheckinsMes() async {
@@ -153,7 +209,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
               weekendDecoration: BoxDecoration(shape: BoxShape.circle),
               outsideDecoration: BoxDecoration(shape: BoxShape.circle),
               todayDecoration: BoxDecoration(
-                color: Colors.transparent, // não pintar por padrão
+                color: Colors.transparent,
                 shape: BoxShape.circle,
               ),
             ),
@@ -162,12 +218,107 @@ class _CalendarioPageState extends State<CalendarioPage> {
               todayBuilder: (context, day, _) => _buildDayCell(day),
             ),
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 24),
+
+          // Card do streak com design melhorado
+          _buildStreakCard(),
+
+          const SizedBox(height: 24),
+
+          // Texto simples para check-ins do mês
           Text(
             'Check-ins do mês: ${checkins.values.where((e) => e).length}',
             style: const TextStyle(fontSize: 16),
           ),
+
+          const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStreakCard() {
+    const int maxStreakVisual = 30; // máximo que a barra mostra
+
+    // Calcula % para a barra de progresso (limitando para o max)
+    double progress = (sequenciaAtual / maxStreakVisual);
+    if (progress > 1.0) progress = 1.0;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // Sequência Atual
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('🔥',
+                    style:
+                        TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Text(
+                  'Sequência atual: ',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800]),
+                ),
+                Text(
+                  '$sequenciaAtual dia${sequenciaAtual == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Barra de progresso visual do streak
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: LinearProgressIndicator(
+                minHeight: 14,
+                value: progress,
+                backgroundColor: Colors.grey[300],
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Maior sequência
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('🏅',
+                    style:
+                        TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Text(
+                  'Maior sequência: ',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800]),
+                ),
+                Text(
+                  '$maiorSequencia dia${maiorSequencia == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
