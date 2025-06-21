@@ -12,96 +12,99 @@ class PerfilPage extends StatelessWidget {
 
   PerfilPage({super.key});
 
-Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) async {
-  final controller = TextEditingController(text: userData['nome'] ?? '');
-  String? errorText;
-  bool isLoading = false;
+  Future<void> _editarNome(
+      BuildContext context, Map<String, dynamic> userData) async {
+    final controller = TextEditingController(text: userData['nome'] ?? '');
+    String? errorText;
+    bool isLoading = false;
 
-  await showDialog(
-    context: context,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          Future<void> salvar() async {
-            final novoNome = controller.text.trim();
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> salvar() async {
+              final novoNome = controller.text.trim();
 
-            // Validação
-            if (novoNome.isEmpty) {
-              setState(() => errorText = 'Informe um nome válido');
-              return;
-            }
-            if (novoNome.length < 3) {
-              setState(() => errorText = 'Nome muito curto (mínimo 3 caracteres)');
-              return;
-            }
-            if (novoNome.length > 30) {
-              setState(() => errorText = 'Nome muito longo (máximo 30 caracteres)');
-              return;
-            }
-            if (user == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Usuário não está logado')),
-              );
-              return;
-            }
+              // Validação
+              if (novoNome.isEmpty) {
+                setState(() => errorText = 'Informe um nome válido');
+                return;
+              }
+              if (novoNome.length < 3) {
+                setState(
+                    () => errorText = 'Nome muito curto (mínimo 3 caracteres)');
+                return;
+              }
+              if (novoNome.length > 30) {
+                setState(() =>
+                    errorText = 'Nome muito longo (máximo 30 caracteres)');
+                return;
+              }
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Usuário não está logado')),
+                );
+                return;
+              }
 
-            setState(() {
-              errorText = null;
-              isLoading = true;
-            });
-
-            try {
-              await FirebaseFirestore.instance
-                  .collection('usuarios')
-                  .doc(user!.uid)
-                  .update({'nome': novoNome});
-              Navigator.pop(context);
-            } catch (e) {
               setState(() {
-                isLoading = false;
-                errorText = 'Erro ao salvar nome: $e';
+                errorText = null;
+                isLoading = true;
               });
-            }
-          }
 
-          return AlertDialog(
-            title: const Text('Editar nome'),
-            content: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                labelText: 'Novo nome',
-                errorText: errorText,
+              try {
+                await FirebaseFirestore.instance
+                    .collection('usuarios')
+                    .doc(user!.uid)
+                    .update({'nome': novoNome});
+                Navigator.pop(context);
+              } catch (e) {
+                setState(() {
+                  isLoading = false;
+                  errorText = 'Erro ao salvar nome: $e';
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Editar nome'),
+              content: TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: 'Novo nome',
+                  errorText: errorText,
+                ),
+                enabled: !isLoading,
+                autofocus: true,
+                onChanged: (_) {
+                  if (errorText != null) {
+                    setState(() => errorText = null);
+                  }
+                },
               ),
-              enabled: !isLoading,
-              autofocus: true,
-              onChanged: (_) {
-                if (errorText != null) {
-                  setState(() => errorText = null);
-                }
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: isLoading ? null : () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: isLoading ? null : salvar,
-                child: isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Salvar'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : salvar,
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Salvar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _editarMetaMensal(
       BuildContext context, Map<String, dynamic> userData) async {
@@ -237,7 +240,8 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return Scaffold(
             appBar: AppBar(title: const Text('Perfil')),
-            body: const Center(child: Text('Dados do usuário não encontrados.')),
+            body:
+                const Center(child: Text('Dados do usuário não encontrados.')),
           );
         }
 
@@ -245,7 +249,8 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
 
         final totalCheckins = userData['totalCheckinsMes'] ?? 0;
         final meta = userData['metaMensal'] ?? 30;
-        final progresso = meta == 0 ? 0.0 : (totalCheckins / meta).clamp(0.0, 1.0);
+        final progresso =
+            meta == 0 ? 0.0 : (totalCheckins / meta).clamp(0.0, 1.0);
 
         return Scaffold(
           appBar: AppBar(
@@ -340,7 +345,8 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                                 style: TextStyle(fontWeight: FontWeight.bold)),
                             IconButton(
                               icon: const Icon(Icons.edit, size: 20),
-                              onPressed: () => _editarMetaMensal(context, userData),
+                              onPressed: () =>
+                                  _editarMetaMensal(context, userData),
                               tooltip: 'Editar meta',
                             ),
                           ],
@@ -365,7 +371,7 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                 ),
                 const SizedBox(height: 24),
 
-                // GRÁFICO DE BARRAS COM MELHOR UX/UI
+                // GRÁFICO DE BARRAS
                 FutureBuilder<Map<String, int>>(
                   future: _getCheckinsPorMes(),
                   builder: (context, snapshot) {
@@ -389,7 +395,8 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                     final meses = data.keys.toList()..sort();
                     final valores = data.values.toList();
 
-                    final metaMensal = (userData['metaMensal'] ?? 30).toDouble();
+                    final metaMensal =
+                        (userData['metaMensal'] ?? 30).toDouble();
 
                     return Container(
                       height: 280,
@@ -397,7 +404,7 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
                             color: Colors.black12,
                             blurRadius: 8,
@@ -434,10 +441,12 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                                 reservedSize: 36,
                                 getTitlesWidget: (value, meta) {
                                   final index = value.toInt();
-                                  if (index < 0 || index >= meses.length) return const SizedBox.shrink();
+                                  if (index < 0 || index >= meses.length)
+                                    return const SizedBox.shrink();
                                   final mes = meses[index];
                                   try {
-                                    final date = DateFormat('yyyy-MM').parse(mes);
+                                    final date =
+                                        DateFormat('yyyy-MM').parse(mes);
                                     return Padding(
                                       padding: const EdgeInsets.only(top: 6),
                                       child: Text(
@@ -460,21 +469,26 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                                 reservedSize: 40,
                                 interval: 5,
                                 getTitlesWidget: (value, meta) {
-                                  if (value % 5 != 0) return const SizedBox.shrink();
+                                  if (value % 5 != 0)
+                                    return const SizedBox.shrink();
                                   return Text(
                                     value.toInt().toString(),
                                     textAlign: TextAlign.right,
-                                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.black54),
                                   );
                                 },
                               ),
                             ),
-                            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
                           ),
                           borderData: FlBorderData(
                             show: true,
-                            border: Border.all(color: Colors.grey.shade300, width: 1),
+                            border: Border.all(
+                                color: Colors.grey.shade300, width: 1),
                           ),
                           gridData: FlGridData(
                             show: true,
@@ -489,7 +503,8 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                             enabled: true,
                             touchTooltipData: BarTouchTooltipData(
                               tooltipBgColor: Colors.blueGrey.shade700,
-                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                              getTooltipItem:
+                                  (group, groupIndex, rod, rodIndex) {
                                 final mes = meses[group.x.toInt()];
                                 final valor = rod.toY.toInt();
                                 return BarTooltipItem(
@@ -526,8 +541,8 @@ Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) as
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                     ),

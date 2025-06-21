@@ -48,15 +48,15 @@ class _LoginState extends State<Login> {
 
   ButtonStyle _buttonStyle() {
     return ButtonStyle(
-      backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
-        if (states.contains(MaterialState.hovered)) {
+      backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.hovered)) {
           return Colors.purple.shade400;
         }
         return const Color(0xff190017);
       }),
-      foregroundColor: MaterialStateProperty.all(Colors.white),
-      shadowColor: MaterialStateProperty.all(const Color(0xff000000)),
-      elevation: MaterialStateProperty.all(10),
+      foregroundColor: WidgetStateProperty.all(Colors.white),
+      shadowColor: WidgetStateProperty.all(const Color(0xff000000)),
+      elevation: WidgetStateProperty.all(10),
     );
   }
 
@@ -116,15 +116,15 @@ class _LoginState extends State<Login> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Row(
+                const Row(
                   children: [
-                    const Expanded(child: Divider(thickness: 1)),
-                    const Padding(
+                    Expanded(child: Divider(thickness: 1)),
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
                       child: Text('ou',
                           style: TextStyle(fontSize: 20, color: Colors.black)),
                     ),
-                    const Expanded(child: Divider(thickness: 1)),
+                    Expanded(child: Divider(thickness: 1)),
                   ],
                 ),
                 const SizedBox(height: 20),

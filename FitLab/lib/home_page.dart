@@ -24,7 +24,7 @@ class HomePage extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -53,8 +53,10 @@ class _MainScreenState extends State<MainScreen> {
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendário'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workout'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today), label: 'Calendário'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.fitness_center), label: 'Workout'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],
         selectedItemColor: Colors.red,
@@ -86,7 +88,7 @@ class NewsArticle {
 }
 
 class HomeContent extends StatefulWidget {
-  const HomeContent({Key? key}) : super(key: key);
+  const HomeContent({super.key});
 
   @override
   State<HomeContent> createState() => _HomeContentState();
@@ -108,7 +110,10 @@ class _HomeContentState extends State<HomeContent> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('inscricoes').doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('inscricoes')
+        .doc(uid)
+        .get();
 
     if (doc.exists) {
       final data = doc.data();
@@ -125,7 +130,10 @@ class _HomeContentState extends State<HomeContent> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    await FirebaseFirestore.instance.collection('inscricoes').doc(uid).set({'aulas': inscricoes});
+    await FirebaseFirestore.instance
+        .collection('inscricoes')
+        .doc(uid)
+        .set({'aulas': inscricoes});
   }
 
   void _inscrever(String aula) {
@@ -154,39 +162,38 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
- void _mostrarInscricoes() {
-  if (!mounted) return;  // <-- verificar antes de chamar o diálogo
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('Minhas Inscrições'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: inscricoes.isEmpty
-            ? const Text('Você não está inscrito em nenhuma aula.')
-            : ListView.builder(
-                shrinkWrap: true,
-                itemCount: inscricoes.length,
-                itemBuilder: (context, index) => ListTile(
-                  title: Text(inscricoes[index]),
-                  leading: const Icon(Icons.check_circle, color: Colors.red),
+  void _mostrarInscricoes() {
+    if (!mounted) return; // <-- verificar antes de chamar o diálogo
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Minhas Inscrições'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: inscricoes.isEmpty
+              ? const Text('Você não está inscrito em nenhuma aula.')
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: inscricoes.length,
+                  itemBuilder: (context, index) => ListTile(
+                    title: Text(inscricoes[index]),
+                    leading: const Icon(Icons.check_circle, color: Colors.red),
+                  ),
                 ),
-              ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Fechar'),  // Só o child aqui, sem if
         ),
-      ],
-    ),
-  );
-}
-
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fechar'), // Só o child aqui, sem if
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _buscarNoticias() async {
     const apiKey = '70a301e794134e829d1dea59ab09bf71';
-    final url =
+    const url =
         'https://newsapi.org/v2/everything?q=health OR fitness OR gym&language=pt&sortBy=publishedAt&pageSize=10&apiKey=$apiKey';
 
     try {
@@ -225,96 +232,125 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
-Widget _newsCard(NewsArticle article) {
-  return Container(
-    width: 200,
-    margin: const EdgeInsets.only(left: 16, bottom: 16, top: 8),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        )
-      ],
-    ),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => _abrirNoticia(article.url),
-      child: Column(
-        mainAxisSize: MainAxisSize.min, // Usando min para ajustar ao conteúdo
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: article.urlToImage.isNotEmpty
-                ? Image.network(
-                    article.urlToImage,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        height: 150,
-                        color: Colors.grey[300],
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                    ),
-                  )
-                : Container(
-                    height: 150,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                  ),
-          ),
+  Widget _newsCard(NewsArticle article) {
+    return Container(
+      width: 200,
+      margin: const EdgeInsets.only(left: 16, bottom: 16, top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _abrirNoticia(article.url),
+        splashColor: Colors.red.withOpacity(0.1),
+        highlightColor: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: article.urlToImage.isNotEmpty
+                      ? Image.network(
+                          article.urlToImage,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              height: 150,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                  child: CircularProgressIndicator()),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            height: 150,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.broken_image,
+                                size: 50, color: Colors.grey),
+                          ),
+                        )
+                      : Container(
+                          height: 150,
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.image_not_supported,
+                              size: 50, color: Colors.grey),
+                        ),
+                ),
 
-          // Usar SingleChildScrollView para o título
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical, // Permitir rolagem vertical
+                // Badge de categoria (opcional)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Saúde', // ou categoria dinâmica
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
               child: Text(
                 article.title,
-                maxLines: 3, // Limitar o número de linhas
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  height: 1.3,
                 ),
               ),
             ),
-          ),
-
-          const Spacer(),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(30, 0, 20, 20),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () => _abrirNoticia(article.url),
-              child: const Text(
-                'Leia mais',
-                style: TextStyle(color: Colors.white),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(30, 0, 20, 20),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                ),
+                onPressed: () => _abrirNoticia(article.url),
+                child: const Text(
+                  'Leia mais',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _classCard(String hour, String title, String imagePath) {
     final isSubscribed = inscricoes.contains(title);
@@ -366,7 +402,8 @@ Widget _newsCard(NewsArticle article) {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isSubscribed ? Colors.red : Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     minimumSize: const Size.fromHeight(40),
                     elevation: 5,
                   ),
@@ -400,7 +437,8 @@ Widget _newsCard(NewsArticle article) {
             children: [
               // Cabeçalho com título e botão
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -409,20 +447,23 @@ Widget _newsCard(NewsArticle article) {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 28,
-                        color: Colors.red,
+                        color: Colors.black,
                       ),
                     ),
                     ElevatedButton(
                       onPressed: _mostrarInscricoes,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 5,
                       ),
                       child: const Text(
                         'Minhas aulas',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -440,10 +481,11 @@ Widget _newsCard(NewsArticle article) {
 
               // Conteúdo notícias
               if (_loadingNews)
-                SizedBox(
+                const SizedBox(
                   height: 180,
-                  child: const Center(
-                    child: CircularProgressIndicator(color: Colors.red, strokeWidth: 4),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: Colors.red, strokeWidth: 4),
                   ),
                 )
               else if (_news.isEmpty)
@@ -456,7 +498,7 @@ Widget _newsCard(NewsArticle article) {
                 )
               else
                 SizedBox(
-                  height: 230,
+                  height: 330,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: _news.length,

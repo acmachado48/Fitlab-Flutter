@@ -26,15 +26,15 @@ class _CadastroState extends State<Cadastro> {
 
   ButtonStyle _buttonStyle() {
     return ButtonStyle(
-      backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
-        if (states.contains(MaterialState.hovered)) {
+      backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.hovered)) {
           return Colors.purple.shade400;
         }
         return const Color(0xff190017);
       }),
-      foregroundColor: MaterialStateProperty.all(Colors.white),
-      shadowColor: MaterialStateProperty.all(Colors.purple),
-      elevation: MaterialStateProperty.all(10),
+      foregroundColor: WidgetStateProperty.all(Colors.white),
+      shadowColor: WidgetStateProperty.all(Colors.purple),
+      elevation: WidgetStateProperty.all(10),
     );
   }
 

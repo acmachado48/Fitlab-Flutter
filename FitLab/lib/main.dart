@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:intl/date_symbol_data_local.dart';  // Import necessário
+import 'package:intl/date_symbol_data_local.dart'; // Import necessário
 import 'firebase_options.dart';
 import 'login.dart';
 

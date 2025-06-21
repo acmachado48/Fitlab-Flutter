@@ -468,7 +468,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _adicionarExercicio,
         backgroundColor: Colors.black,
-        child: const Text('+', style: TextStyle(fontSize: 30)),
+        child: const Text('+',
+            style: TextStyle(fontSize: 30, color: Colors.white)),
       ),
     );
   }
