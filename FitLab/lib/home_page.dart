@@ -141,33 +141,48 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
-  void _mostrarInscricoes() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Minhas Inscrições'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: inscricoes.isEmpty
-              ? const Text('Você não está inscrito em nenhuma aula.')
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: inscricoes.length,
-                  itemBuilder: (context, index) => ListTile(
-                    title: Text(inscricoes[index]),
-                    leading: const Icon(Icons.check_circle, color: Colors.red),
-                  ),
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Fechar'),
-          ),
-        ],
-      ),
-    );
+  void _desinscrever(String aula) {
+    if (inscricoes.contains(aula)) {
+      setState(() {
+        inscricoes.remove(aula);
+      });
+      _salvarInscricoes();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Você se desinscreveu da aula "$aula".')),
+      );
+    }
   }
+
+ void _mostrarInscricoes() {
+  if (!mounted) return;  // <-- verificar antes de chamar o diálogo
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Minhas Inscrições'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: inscricoes.isEmpty
+            ? const Text('Você não está inscrito em nenhuma aula.')
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: inscricoes.length,
+                itemBuilder: (context, index) => ListTile(
+                  title: Text(inscricoes[index]),
+                  leading: const Icon(Icons.check_circle, color: Colors.red),
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Fechar'),  // Só o child aqui, sem if
+        ),
+      ],
+    ),
+  );
+}
+
 
   Future<void> _buscarNoticias() async {
     const apiKey = '70a301e794134e829d1dea59ab09bf71';
@@ -210,246 +225,268 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
-  Widget _newsCard(NewsArticle article) {
-    return Container(
-      width: 180,
-      margin: const EdgeInsets.only(left: 16, bottom: 16, top: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _abrirNoticia(article.url),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: article.urlToImage.isNotEmpty
-                  ? Image.network(
-                      article.urlToImage,
-                      height: 120,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(
-                          height: 120,
-                          color: Colors.grey[300],
-                          child: const Center(child: CircularProgressIndicator()),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 120,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                      ),
-                    )
-                  : Container(
-                      height: 120,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                    ),
-            ),
-
-
-            Flexible(
-  child: Padding(
-    padding: const EdgeInsets.fromLTRB(30, 20, 20, 20),
-    child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.red,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      onPressed: () => _abrirNoticia(article.url),
-      child: const Text(
-        'Leia mais',
-        style: TextStyle(color: Colors.white), // Texto branco
-      ),
-    ),
-  ),
-),
-
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-Widget _classCard(String hour, String title, String imagePath) {
-  final isSubscribed = inscricoes.contains(title);
+Widget _newsCard(NewsArticle article) {
   return Container(
-    width: 180,
+    width: 200,
     margin: const EdgeInsets.only(left: 16, bottom: 16, top: 8),
     decoration: BoxDecoration(
-      color: isSubscribed ? Colors.red.shade50 : Colors.white,
+      color: Colors.white,
       borderRadius: BorderRadius.circular(12),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 6,
-          offset: const Offset(0, 3),
-        ),
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        )
       ],
     ),
     child: InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        if (!isSubscribed) _inscrever(title);
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                imagePath,
-                height: 90,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(hour, style: const TextStyle(color: Colors.grey)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isSubscribed ? Colors.grey : Colors.red,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  minimumSize: const Size.fromHeight(40),
-                  elevation: isSubscribed ? 0 : 5,
-                ),
-                onPressed: isSubscribed ? null : () => _inscrever(title),
-                child: Text(
-  isSubscribed ? 'Inscrito' : 'Inscreva-se',
-  style: const TextStyle(color: Colors.white),
-),
+      onTap: () => _abrirNoticia(article.url),
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Usando min para ajustar ao conteúdo
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: article.urlToImage.isNotEmpty
+                ? Image.network(
+                    article.urlToImage,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        height: 150,
+                        color: Colors.grey[300],
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 150,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                    ),
+                  )
+                : Container(
+                    height: 150,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                  ),
+          ),
 
+          // Usar SingleChildScrollView para o título
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical, // Permitir rolagem vertical
+              child: Text(
+                article.title,
+                maxLines: 3, // Limitar o número de linhas
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          const Spacer(),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(30, 0, 20, 20),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () => _abrirNoticia(article.url),
+              child: const Text(
+                'Leia mais',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
     ),
   );
 }
 
-@override
-Widget build(BuildContext context) {
-  return SafeArea(
-    child: RefreshIndicator(
-      onRefresh: _refreshNews,
-      child: SingleChildScrollView(  // Adicionando SingleChildScrollView para garantir a rolagem
-        child: Column(
-          children: [
-            // Cabeçalho com título e botão
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+  Widget _classCard(String hour, String title, String imagePath) {
+    final isSubscribed = inscricoes.contains(title);
+    return Container(
+      width: 180,
+      height: 300,
+      margin: const EdgeInsets.only(left: 16, bottom: 16, top: 8),
+      decoration: BoxDecoration(
+        color: isSubscribed ? Colors.red.shade50 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          if (!isSubscribed) _inscrever(title);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  imagePath,
+                  height: 90,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
                 children: [
-                  const Text(
-                    'FitLab',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 28,
-                      color: Colors.red,
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _mostrarInscricoes,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 5,
-                    ),
-                    child: const Text(
-                      'Minhas aulas',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                  const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(hour, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
-            ),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Notícias sobre Saúde e Academia',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Conteúdo notícias
-            if (_loadingNews)
+              const SizedBox(height: 8),
               SizedBox(
-                height: 180,
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.red, strokeWidth: 4),
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSubscribed ? Colors.red : Colors.red,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    minimumSize: const Size.fromHeight(40),
+                    elevation: 5,
+                  ),
+                  onPressed: () {
+                    if (isSubscribed) {
+                      _desinscrever(title);
+                    } else {
+                      _inscrever(title);
+                    }
+                  },
+                  child: Text(
+                    isSubscribed ? 'Desinscrever' : 'Inscreva-se',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
-              )
-            else if (_news.isEmpty)
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _refreshNews,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Cabeçalho com título e botão
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'FitLab',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 28,
+                        color: Colors.red,
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _mostrarInscricoes,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 5,
+                      ),
+                      child: const Text(
+                        'Minhas aulas',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'Nenhuma notícia disponível no momento.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  'Notícias sobre Saúde e Academia',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-              )
-            else
+              ),
+              const SizedBox(height: 8),
+
+              // Conteúdo notícias
+              if (_loadingNews)
+                SizedBox(
+                  height: 180,
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Colors.red, strokeWidth: 4),
+                  ),
+                )
+              else if (_news.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                  child: Text(
+                    'Nenhuma notícia disponível no momento.',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 230,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _news.length,
+                    itemBuilder: (context, index) => _newsCard(_news[index]),
+                  ),
+                ),
+
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                child: Text(
+                  'Aulas Coletivas',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+
+              // Lista de Aulas Coletivas
               SizedBox(
                 height: 230,
-                child: ListView.builder(
+                child: ListView(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _news.length,
-                  itemBuilder: (context, index) => _newsCard(_news[index]),
+                  children: [
+                    _classCard('10h30', 'FitDance', 'assets/img1.png'),
+                    _classCard('11h00', 'Spinning', 'assets/img2.png'),
+                  ],
                 ),
               ),
-
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text(
-                'Aulas Coletivas',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-
-            // Lista de Aulas Coletivas
-            SizedBox(
-              height: 230,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _classCard('10h30', 'FitDance', 'assets/img1.png'),
-                  _classCard('11h00', 'Spinning', 'assets/img2.png'),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
