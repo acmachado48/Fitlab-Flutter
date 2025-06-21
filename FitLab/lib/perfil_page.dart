@@ -3,9 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
 
 import 'login.dart';
 
@@ -13,6 +11,97 @@ class PerfilPage extends StatelessWidget {
   final User? user = FirebaseAuth.instance.currentUser;
 
   PerfilPage({super.key});
+
+Future<void> _editarNome(BuildContext context, Map<String, dynamic> userData) async {
+  final controller = TextEditingController(text: userData['nome'] ?? '');
+  String? errorText;
+  bool isLoading = false;
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          Future<void> salvar() async {
+            final novoNome = controller.text.trim();
+
+            // Validação
+            if (novoNome.isEmpty) {
+              setState(() => errorText = 'Informe um nome válido');
+              return;
+            }
+            if (novoNome.length < 3) {
+              setState(() => errorText = 'Nome muito curto (mínimo 3 caracteres)');
+              return;
+            }
+            if (novoNome.length > 30) {
+              setState(() => errorText = 'Nome muito longo (máximo 30 caracteres)');
+              return;
+            }
+            if (user == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Usuário não está logado')),
+              );
+              return;
+            }
+
+            setState(() {
+              errorText = null;
+              isLoading = true;
+            });
+
+            try {
+              await FirebaseFirestore.instance
+                  .collection('usuarios')
+                  .doc(user!.uid)
+                  .update({'nome': novoNome});
+              Navigator.pop(context);
+            } catch (e) {
+              setState(() {
+                isLoading = false;
+                errorText = 'Erro ao salvar nome: $e';
+              });
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Editar nome'),
+            content: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                labelText: 'Novo nome',
+                errorText: errorText,
+              ),
+              enabled: !isLoading,
+              autofocus: true,
+              onChanged: (_) {
+                if (errorText != null) {
+                  setState(() => errorText = null);
+                }
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: isLoading ? null : salvar,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Salvar'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
   Future<void> _editarMetaMensal(
       BuildContext context, Map<String, dynamic> userData) async {
@@ -96,34 +185,33 @@ class PerfilPage extends StatelessWidget {
     );
   }
 
-Future<Map<String, int>> _getCheckinsPorMes() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return {};
+  Future<Map<String, int>> _getCheckinsPorMes() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return {};
 
-  final Map<String, int> dados = {};
+    final Map<String, int> dados = {};
 
-  final snapshot = await FirebaseFirestore.instance
-      .collection('usuarios')
-      .doc(user.uid)
-      .collection('checkins')
-      .orderBy('date')
-      .get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('checkins')
+        .orderBy('date')
+        .get();
 
-  for (var doc in snapshot.docs) {
-    if ((doc['checked'] ?? false) == true) {
-      try {
-        final date = DateTime.parse(doc['date']);
-        final key = DateFormat('yyyy-MM').format(date); // ex: "2025-06"
-        dados[key] = (dados[key] ?? 0) + 1;
-      } catch (e) {
-        print('Erro ao converter data: ${doc['date']}');
+    for (var doc in snapshot.docs) {
+      if ((doc['checked'] ?? false) == true) {
+        try {
+          final date = DateTime.parse(doc['date']);
+          final key = DateFormat('yyyy-MM').format(date); // ex: "2025-06"
+          dados[key] = (dados[key] ?? 0) + 1;
+        } catch (e) {
+          print('Erro ao converter data: ${doc['date']}');
+        }
       }
     }
+
+    return dados;
   }
-
-  return dados;
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -188,9 +276,26 @@ Future<Map<String, int>> _getCheckinsPorMes() async {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(userData['nome'] ?? '',
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
+
+                // Nome com botão de editar
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      userData['nome'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'Editar nome',
+                      onPressed: () => _editarNome(context, userData),
+                    ),
+                  ],
+                ),
+
                 const SizedBox(height: 4),
                 Text(userData['email'] ?? '',
                     style: const TextStyle(fontSize: 16, color: Colors.grey)),
@@ -327,27 +432,26 @@ Future<Map<String, int>> _getCheckinsPorMes() async {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 reservedSize: 36,
-                              getTitlesWidget: (value, meta) {
-  final index = value.toInt();
-  if (index < 0 || index >= meses.length) return const SizedBox.shrink();
-  final mes = meses[index];
-  try {
-    final date = DateFormat('yyyy-MM').parse(mes); // agora é seguro
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text(
-        DateFormat.MMM('pt_BR').format(date), // ex: "jun."
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87),
-      ),
-    );
-  } catch (e) {
-    return const Text('?');
-  }
-},
-
+                                getTitlesWidget: (value, meta) {
+                                  final index = value.toInt();
+                                  if (index < 0 || index >= meses.length) return const SizedBox.shrink();
+                                  final mes = meses[index];
+                                  try {
+                                    final date = DateFormat('yyyy-MM').parse(mes);
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        DateFormat.MMM('pt_BR').format(date),
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    return const Text('?');
+                                  }
+                                },
                               ),
                             ),
                             leftTitles: AxisTitles(
@@ -358,11 +462,10 @@ Future<Map<String, int>> _getCheckinsPorMes() async {
                                 getTitlesWidget: (value, meta) {
                                   if (value % 5 != 0) return const SizedBox.shrink();
                                   return Text(
-  value.toInt().toString(),
-  textAlign: TextAlign.right,
-  style: const TextStyle(fontSize: 12, color: Colors.black54),
-);
-
+                                    value.toInt().toString(),
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                  );
                                 },
                               ),
                             ),
