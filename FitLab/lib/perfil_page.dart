@@ -205,7 +205,7 @@ class PerfilPage extends StatelessWidget {
       if ((doc['checked'] ?? false) == true) {
         try {
           final date = DateTime.parse(doc['date']);
-          final key = DateFormat('yyyy-MM').format(date); // ex: "2025-06"
+          final key = DateFormat('yyyy-MM').format(date);
           dados[key] = (dados[key] ?? 0) + 1;
         } catch (e) {
           print('Erro ao converter data: ${doc['date']}');
@@ -221,6 +221,7 @@ class PerfilPage extends StatelessWidget {
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Perfil')),
+        backgroundColor: Colors.white,
         body: const Center(child: Text('Nenhum usuário logado.')),
       );
     }
@@ -233,6 +234,7 @@ class PerfilPage extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
+            backgroundColor: Colors.white,
             body: Center(child: CircularProgressIndicator()),
           );
         }
@@ -267,6 +269,7 @@ class PerfilPage extends StatelessWidget {
               )
             ],
           ),
+          backgroundColor: Colors.white,
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(

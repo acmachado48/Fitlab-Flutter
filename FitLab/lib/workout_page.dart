@@ -380,6 +380,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
           IconButton(onPressed: _adicionarFicha, icon: const Icon(Icons.add))
         ],
       ),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           const SizedBox(height: 10),

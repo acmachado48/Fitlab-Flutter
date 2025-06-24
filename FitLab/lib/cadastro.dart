@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
+import 'package:intl/intl.dart';
 
 class Cadastro extends StatefulWidget {
   const Cadastro({super.key});
@@ -38,16 +39,29 @@ class _CadastroState extends State<Cadastro> {
     );
   }
 
+  // importe no topo se ainda não importou
+
   Future<void> _registrar() async {
     final email = _emailController.text.trim();
     final senha = _senhaController.text.trim();
     final nome = _nomeController.text.trim();
-    final nascimento = _nascimentoController.text.trim();
+    final nascimentoStr = _nascimentoController.text.trim();
     final confirmarSenha = _confirmarSenhaController.text.trim();
 
     if (senha != confirmarSenha) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('As senhas não coincidem.')),
+      );
+      return;
+    }
+
+    DateTime nascimentoDate;
+    try {
+      nascimentoDate = DateFormat('dd/MM/yyyy').parseStrict(nascimentoStr);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Data de nascimento inválida. Use dd/MM/yyyy')),
       );
       return;
     }
@@ -61,7 +75,7 @@ class _CadastroState extends State<Cadastro> {
       await FirebaseFirestore.instance.collection('usuarios').doc(uid).set({
         'nome': nome,
         'email': email,
-        'nascimento': nascimento,
+        'nascimento': Timestamp.fromDate(nascimentoDate),
         'criado_em': Timestamp.now(),
       });
 
@@ -69,7 +83,6 @@ class _CadastroState extends State<Cadastro> {
         const SnackBar(content: Text('Cadastro realizado com sucesso!')),
       );
 
-      // Redirecionar para a tela de login após pequeno delay
       Future.delayed(const Duration(milliseconds: 300), () {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const Login()),

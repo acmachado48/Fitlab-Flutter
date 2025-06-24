@@ -20,15 +20,46 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
   int sequenciaAtual = 0;
   int maiorSequencia = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _carregarCheckinsMes(focusedDay);
+
+    _inicializarCheckinInicial().then((_) {
+      _carregarCheckinsMes(focusedDay);
+    });
+  }
+
+  Future<void> _inicializarCheckinInicial() async {
+    if (user == null) return;
+
+    final uid = user!.uid;
+    final hojeStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    final docRef = FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(uid)
+        .collection('checkins')
+        .doc(hojeStr);
+
+    final docSnapshot = await docRef.get();
+
+    if (!docSnapshot.exists) {
+      await docRef.set({
+        'date': hojeStr,
+        'checked': true,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   Future<void> _carregarCheckinsMes(DateTime mes) async {
     if (user == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final uid = user!.uid;
     final inicio = DateTime(mes.year, mes.month, 1);
@@ -53,6 +84,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
     setState(() {
       checkins = dados;
+      _isLoading = false;
     });
 
     _calcularSequencias();
@@ -74,7 +106,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
         .toList();
     diasCheckin.sort();
 
-    // Calcular maior sequência
+    // Calcular maior sequência normalmente
     int maior = 0;
     int contador = 1;
     for (int i = 1; i < diasCheckin.length; i++) {
@@ -89,25 +121,57 @@ class _CalendarioPageState extends State<CalendarioPage> {
     }
     if (contador > maior) maior = contador;
 
-    // Calcular sequência atual (de hoje para trás)
-    int atualStreak = 0;
-    DateTime diaAtual = DateTime.now();
-    diaAtual = DateTime(diaAtual.year, diaAtual.month, diaAtual.day);
+    final hoje = DateTime.now();
+    final hojeStr = DateFormat('yyyy-MM-dd')
+        .format(DateTime(hoje.year, hoje.month, hoje.day));
+    final ontem = hoje.subtract(const Duration(days: 1));
+    final ontemStr = DateFormat('yyyy-MM-dd').format(ontem);
 
-    while (true) {
-      final diaStr = DateFormat('yyyy-MM-dd').format(diaAtual);
-      if (checkins[diaStr] == true) {
-        atualStreak++;
-        diaAtual = diaAtual.subtract(const Duration(days: 1));
-      } else {
-        break;
+    // Se usuário fez check-in hoje, começa sequência a partir de hoje
+    // Caso contrário, só continua se fez check-in ontem
+    if (checkins[hojeStr] == true) {
+      // Conta sequência para trás a partir de hoje
+      int atualStreak = 0;
+      DateTime diaAtual = hoje;
+
+      while (true) {
+        final diaStr = DateFormat('yyyy-MM-dd').format(diaAtual);
+        if (checkins[diaStr] == true) {
+          atualStreak++;
+          diaAtual = diaAtual.subtract(const Duration(days: 1));
+        } else {
+          break;
+        }
       }
-    }
+      setState(() {
+        maiorSequencia = maior;
+        sequenciaAtual = atualStreak;
+      });
+    } else if (checkins[ontemStr] == true) {
+      // Usuário não marcou hoje, mas marcou ontem, sequência vale até ontem
+      int atualStreak = 0;
+      DateTime diaAtual = ontem;
 
-    setState(() {
-      maiorSequencia = maior;
-      sequenciaAtual = atualStreak;
-    });
+      while (true) {
+        final diaStr = DateFormat('yyyy-MM-dd').format(diaAtual);
+        if (checkins[diaStr] == true) {
+          atualStreak++;
+          diaAtual = diaAtual.subtract(const Duration(days: 1));
+        } else {
+          break;
+        }
+      }
+      setState(() {
+        maiorSequencia = maior;
+        sequenciaAtual = atualStreak;
+      });
+    } else {
+      // Usuário não marcou hoje nem ontem, sequência atual reseta
+      setState(() {
+        maiorSequencia = maior;
+        sequenciaAtual = 0;
+      });
+    }
   }
 
   Future<void> _toggleCheckin(DateTime day) async {
@@ -175,9 +239,13 @@ class _CalendarioPageState extends State<CalendarioPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
         title: const Text('Calendário de Check-ins'),
         centerTitle: true,
       ),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           TableCalendar(
@@ -221,12 +289,11 @@ class _CalendarioPageState extends State<CalendarioPage> {
 
           const SizedBox(height: 24),
 
-          // Card do streak com design melhorado
-          _buildStreakCard(),
+          // Mostrar loading enquanto carrega ou streak / mensagem
+          _isLoading ? const CircularProgressIndicator() : _buildStreakCard(),
 
           const SizedBox(height: 24),
 
-          // Texto simples para check-ins do mês
           Text(
             'Check-ins do mês: ${checkins.values.where((e) => e).length}',
             style: const TextStyle(fontSize: 16),
@@ -239,9 +306,8 @@ class _CalendarioPageState extends State<CalendarioPage> {
   }
 
   Widget _buildStreakCard() {
-    const int maxStreakVisual = 30; // máximo que a barra mostra
+    const int maxStreakVisual = 30;
 
-    // Calcula % para a barra de progresso (limitando para o max)
     double progress = (sequenciaAtual / maxStreakVisual);
     if (progress > 1.0) progress = 1.0;
 
@@ -253,7 +319,6 @@ class _CalendarioPageState extends State<CalendarioPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Sequência Atual
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -268,32 +333,38 @@ class _CalendarioPageState extends State<CalendarioPage> {
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[800]),
                 ),
-                Text(
-                  '$sequenciaAtual dia${sequenciaAtual == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green),
-                ),
+                sequenciaAtual > 0
+                    ? Text(
+                        '$sequenciaAtual dia${sequenciaAtual == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green),
+                      )
+                    : Flexible(
+                        child: Text(
+                          '0',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
               ],
             ),
-
             const SizedBox(height: 12),
-
-            // Barra de progresso visual do streak
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: LinearProgressIndicator(
                 minHeight: 14,
                 value: progress,
                 backgroundColor: Colors.grey[300],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    sequenciaAtual > 0 ? Colors.green : Colors.grey),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Maior sequência
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

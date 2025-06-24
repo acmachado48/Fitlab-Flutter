@@ -15,11 +15,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(),
-      home: const MainScreen(),
-    );
+    return const MainScreen();
   }
 }
 
@@ -47,6 +43,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -59,7 +56,8 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(Icons.fitness_center), label: 'Workout'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],
-        selectedItemColor: Colors.red,
+        selectedItemColor: Color.fromARGB(255, 221, 64, 52),
+        backgroundColor: Colors.white,
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,
       ),
@@ -69,21 +67,35 @@ class _MainScreenState extends State<MainScreen> {
 
 class NewsArticle {
   final String title;
-  final String urlToImage;
   final String url;
+  final String urlToImage;
 
   NewsArticle({
     required this.title,
-    required this.urlToImage,
     required this.url,
+    required this.urlToImage,
   });
 
   factory NewsArticle.fromJson(Map<String, dynamic> json) {
     return NewsArticle(
       title: json['title'] ?? 'Sem título',
-      urlToImage: json['urlToImage'] ?? '',
       url: json['url'] ?? '',
+      urlToImage: json['urlToImage'] ?? '',
     );
+  }
+
+  // Computa dinamicamente a categoria com base no título
+  String get categoria {
+    final lower = title.toLowerCase();
+    if (lower.contains('academia') ||
+        lower.contains('treino') ||
+        lower.contains('musculação')) {
+      return 'Treino';
+    } else if (lower.contains('fitness') || lower.contains('dieta')) {
+      return 'Fitness';
+    } else {
+      return 'Saúde';
+    }
   }
 }
 
@@ -177,7 +189,8 @@ class _HomeContentState extends State<HomeContent> {
                   itemCount: inscricoes.length,
                   itemBuilder: (context, index) => ListTile(
                     title: Text(inscricoes[index]),
-                    leading: const Icon(Icons.check_circle, color: Colors.red),
+                    leading: const Icon(Icons.check_circle,
+                        color: Color.fromARGB(255, 221, 64, 52)),
                   ),
                 ),
         ),
@@ -194,7 +207,7 @@ class _HomeContentState extends State<HomeContent> {
   Future<void> _buscarNoticias() async {
     const apiKey = '70a301e794134e829d1dea59ab09bf71';
     const url =
-        'https://newsapi.org/v2/everything?q=health OR fitness OR gym&language=pt&sortBy=publishedAt&pageSize=10&apiKey=$apiKey';
+        'https://newsapi.org/v2/everything?q=(fitness OR gym OR academia OR treino OR musculação)&language=pt&sortBy=publishedAt&pageSize=10&apiKey=$apiKey';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -222,12 +235,21 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   void _abrirNoticia(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      final cleanedUrl = url.trim(); // Remove espaços no início/fim
+      final uri = Uri.parse(cleanedUrl);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível abrir o link')),
+        );
+      }
+    } catch (e) {
+      // Se a URL for inválida, evita o crash e mostra erro
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível abrir o link')),
+        SnackBar(content: Text('URL inválida: $e')),
       );
     }
   }
@@ -291,7 +313,7 @@ class _HomeContentState extends State<HomeContent> {
                         ),
                 ),
 
-                // Badge de categoria (opcional)
+                // Badge de categoria dinâmica
                 Positioned(
                   top: 8,
                   left: 8,
@@ -299,12 +321,12 @@ class _HomeContentState extends State<HomeContent> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.redAccent,
+                      color: const Color.fromARGB(255, 221, 64, 52),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'Saúde', // ou categoria dinâmica
-                      style: TextStyle(
+                    child: Text(
+                      article.categoria,
+                      style: const TextStyle(
                         fontSize: 11,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -332,7 +354,7 @@ class _HomeContentState extends State<HomeContent> {
               padding: const EdgeInsets.fromLTRB(30, 0, 20, 20),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: const Color.fromARGB(255, 221, 64, 52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -401,7 +423,9 @@ class _HomeContentState extends State<HomeContent> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isSubscribed ? Colors.red : Colors.red,
+                    backgroundColor: isSubscribed
+                        ? Color.fromARGB(255, 221, 64, 52)
+                        : Color.fromARGB(255, 221, 64, 52),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     minimumSize: const Size.fromHeight(40),
@@ -453,7 +477,7 @@ class _HomeContentState extends State<HomeContent> {
                     ElevatedButton(
                       onPressed: _mostrarInscricoes,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor: const Color.fromARGB(255, 221, 64, 52),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
                         shape: RoundedRectangleBorder(
@@ -485,7 +509,8 @@ class _HomeContentState extends State<HomeContent> {
                   height: 180,
                   child: Center(
                     child: CircularProgressIndicator(
-                        color: Colors.red, strokeWidth: 4),
+                        color: Color.fromARGB(255, 221, 64, 52),
+                        strokeWidth: 4),
                   ),
                 )
               else if (_news.isEmpty)
