@@ -4,12 +4,25 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'login.dart';
 
-void main() {
-  runApp(
-    MaterialApp(
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await initializeDateFormatting(); // se estiver usando formatação local
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'FitLab App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        useMaterial3: false, // Desativa Material 3 (que usa roxo por padrão)
+        useMaterial3: false,
         primaryColor: Colors.black,
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
@@ -44,23 +57,6 @@ void main() {
           backgroundColor: Colors.black87,
           contentTextStyle: TextStyle(color: Colors.white),
         ),
-      ),
-      home: const Login(),
-    ),
-  );
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FitLab App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.white,
       ),
       home: const Login(),
     );

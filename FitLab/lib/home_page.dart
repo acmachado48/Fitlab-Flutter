@@ -206,8 +206,19 @@ class _HomeContentState extends State<HomeContent> {
 
   Future<void> _buscarNoticias() async {
     const apiKey = '70a301e794134e829d1dea59ab09bf71';
-    const url =
-        'https://newsapi.org/v2/everything?q=(fitness OR gym OR academia OR treino OR musculação)&language=pt&sortBy=publishedAt&pageSize=10&apiKey=$apiKey';
+
+    // Lista de domínios confiáveis
+    const domains =
+        'healthline.com,webmd.com,menshealth.com,shape.com,verywellfit.com,medicalnewstoday.com,self.com,livestrong.com,everydayhealth.com,eatthis.com';
+
+    // Query com filtro por domínios e palavras-chave
+    final url = 'https://newsapi.org/v2/everything?'
+        'q=("fitness" OR "workout" OR "gym" OR "health" OR "nutrition" OR "wellness")'
+        '&language=en'
+        '&sortBy=publishedAt'
+        '&pageSize=10'
+        '&domains=$domains'
+        '&apiKey=$apiKey';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -215,8 +226,11 @@ class _HomeContentState extends State<HomeContent> {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         final List<dynamic> articles = jsonData['articles'] ?? [];
 
+        final List<NewsArticle> filtradas =
+            articles.map((json) => NewsArticle.fromJson(json)).toList();
+
         setState(() {
-          _news = articles.map((json) => NewsArticle.fromJson(json)).toList();
+          _news = filtradas;
           _loadingNews = false;
         });
       } else {
@@ -378,7 +392,7 @@ class _HomeContentState extends State<HomeContent> {
     final isSubscribed = inscricoes.contains(title);
     return Container(
       width: 180,
-      height: 300,
+      height: 330,
       margin: const EdgeInsets.only(left: 16, bottom: 16, top: 8),
       decoration: BoxDecoration(
         color: isSubscribed ? Colors.red.shade50 : Colors.white,
@@ -405,7 +419,7 @@ class _HomeContentState extends State<HomeContent> {
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
                   imagePath,
-                  height: 90,
+                  height: 130,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
@@ -541,7 +555,7 @@ class _HomeContentState extends State<HomeContent> {
 
               // Lista de Aulas Coletivas
               SizedBox(
-                height: 230,
+                height: 260,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [

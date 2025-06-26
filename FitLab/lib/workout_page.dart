@@ -161,9 +161,19 @@ class _WorkoutPageState extends State<WorkoutPage> {
       fichas.clear();
       for (final doc in fichasSnapshot.docs) {
         final nome = doc['name'];
-        final exercicios = List<Map<String, String>>.from(
-          (doc['exercicios'] as List).map((e) => Map<String, String>.from(e)),
-        );
+        final exercicios =
+            (doc['exercicios'] as List).map<Map<String, String>>((e) {
+          final map = Map<String, String>.from(e);
+
+          // Se não houver imagem ou estiver vazia, atribui uma imagem padrão
+          if (!map.containsKey('image') || map['image']!.trim().isEmpty) {
+            map['image'] =
+                'https://via.placeholder.com/60'; // ou outro GIF de academia
+          }
+
+          return map;
+        }).toList();
+
         fichas[nome] = exercicios;
       }
       if (fichas.isNotEmpty) {
@@ -249,7 +259,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 'series': seriesController.text,
                 'image': index != null
                     ? fichas[fichaSelecionada]![index]['image'] ?? ''
-                    : '',
+                    : nomeController.text.isNotEmpty
+                        ? 'https://via.placeholder.com/60' // ou qualquer imagem padrão
+                        : '',
               };
               setState(() {
                 if (index == null) {

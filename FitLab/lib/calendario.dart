@@ -25,10 +25,12 @@ class _CalendarioPageState extends State<CalendarioPage> {
   @override
   void initState() {
     super.initState();
+    _inicializarTudo();
+  }
 
-    _inicializarCheckinInicial().then((_) {
-      _carregarCheckinsMes(focusedDay);
-    });
+  Future<void> _inicializarTudo() async {
+    await _inicializarCheckinInicial();
+    await _carregarCheckinsMes(focusedDay);
   }
 
   Future<void> _inicializarCheckinInicial() async {
