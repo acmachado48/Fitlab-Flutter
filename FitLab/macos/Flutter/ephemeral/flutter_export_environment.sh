@@ -1,6 +1,6 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=/Users/anacarolinamachado/projeto app/Projeto Final/flutter_application_final/flutter"
+export "FLUTTER_ROOT=/Users/anacarolinamachado/development/flutter"
 export "FLUTTER_APPLICATION_PATH=/Users/anacarolinamachado/PF LDDM/Projeto-LDDM/FitLab"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"

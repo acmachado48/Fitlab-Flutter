@@ -9,9 +9,21 @@ firebase-debug.*.log*
 
 # Firebase cache
 .firebase/
-
-
+# Flutter
 build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# iOS
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# Android
+android/.gradle
+android/local.properties
+
 
 
 # Firebase config

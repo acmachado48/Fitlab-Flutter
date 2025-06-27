@@ -68,6 +68,18 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "crypto",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/crypto-3.0.6",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "equatable",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/equatable-2.0.7",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "fake_async",
       "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/fake_async-1.3.3",
       "packageUri": "lib/",
@@ -122,8 +134,14 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "fl_chart",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/fl_chart-0.66.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
       "name": "flutter",
-      "rootUri": "file:///Users/anacarolinamachado/projeto%20app/Projeto%20Final/flutter_application_final/flutter/packages/flutter",
+      "rootUri": "file:///Users/anacarolinamachado/development/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -135,15 +153,21 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///Users/anacarolinamachado/projeto%20app/Projeto%20Final/flutter_application_final/flutter/packages/flutter_test",
+      "rootUri": "file:///Users/anacarolinamachado/development/flutter/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///Users/anacarolinamachado/projeto%20app/Projeto%20Final/flutter_application_final/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///Users/anacarolinamachado/development/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.7"
+    },
+    {
+      "name": "google_fonts",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/google_fonts-6.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.14"
     },
     {
       "name": "http",
@@ -218,6 +242,24 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "path_provider",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/path_provider-2.1.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "path_provider_android",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/path_provider_android-2.2.17",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "path_provider_foundation",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
       "name": "path_provider_linux",
       "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1",
       "packageUri": "lib/",
@@ -290,8 +332,14 @@
       "languageVersion": "3.3"
     },
     {
+      "name": "simple_gesture_detector",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/simple_gesture_detector-0.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "sky_engine",
-      "rootUri": "file:///Users/anacarolinamachado/projeto%20app/Projeto%20Final/flutter_application_final/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///Users/anacarolinamachado/development/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -320,6 +368,12 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "table_calendar",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/table_calendar-3.0.8",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "term_glyph",
       "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/term_glyph-1.2.2",
       "packageUri": "lib/",
@@ -336,6 +390,54 @@
       "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/typed_data-1.4.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
+    },
+    {
+      "name": "url_launcher",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher-6.3.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "url_launcher_android",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.16",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "url_launcher_ios",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "url_launcher_linux",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_linux-3.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "url_launcher_macos",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_macos-3.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "url_launcher_platform_interface",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_platform_interface-2.3.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
+      "name": "url_launcher_web",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_web-2.4.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "url_launcher_windows",
+      "rootUri": "file:///Users/anacarolinamachado/.pub-cache/hosted/pub.dev/url_launcher_windows-3.1.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
     },
     {
       "name": "vector_math",
@@ -370,7 +472,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.8.1",
-  "flutterRoot": "file:///Users/anacarolinamachado/projeto%20app/Projeto%20Final/flutter_application_final/flutter",
+  "flutterRoot": "file:///Users/anacarolinamachado/development/flutter",
   "flutterVersion": "3.32.4",
   "pubCache": "file:///Users/anacarolinamachado/.pub-cache"
 }
