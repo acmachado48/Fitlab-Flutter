@@ -62,3 +62,21 @@
 - **fl_chart**: Gráficos de progresso e check-ins
 
 ---
+
+## 📱 Telas do App
+
+### Tela Inicial
+
+![Tela inicial do FitLab](screenshots/home_page.PNG)
+
+### Calendário de Check-ins
+
+![Calendário de Check-ins](screenshots/calendario.PNG)
+
+### Ficha de Treino
+
+![Ficha de Treino](/screenshots/workout_page.png)
+
+### Perfil do Usuário
+
+![Perfil do Usuário](screenshots/perfil_page.png)
