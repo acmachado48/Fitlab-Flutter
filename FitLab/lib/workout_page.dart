@@ -73,8 +73,10 @@ class ExerciseSearch extends SearchDelegate<Map<String, String>?> {
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.fitness_center),
+                          errorBuilder: (_, error, ___) {
+                            debugPrint('Erro ao carregar imagem: $error');
+                            return const Icon(Icons.fitness_center);
+                          },
                         )
                       : const Icon(Icons.fitness_center),
               title: Text(exercise['name'] ?? ''),
@@ -157,32 +159,60 @@ class _WorkoutPageState extends State<WorkoutPage> {
         .collection('fichas')
         .get();
 
+    Map<String, List<Map<String, String>>> fichasTemporarias = {};
+
+    for (final doc in fichasSnapshot.docs) {
+      final nome = doc['name'];
+      final exercicios =
+          (doc['exercicios'] as List).map<Map<String, String>>((e) {
+        final map = Map<String, String>.from(e);
+        return map;
+      }).toList();
+
+      fichasTemporarias[nome] = exercicios;
+    }
+
+    // Agora atualizar URLs expiradas/invalidas
+    bool precisaSalvar = false;
+    for (final entry in fichasTemporarias.entries) {
+      final listaExercicios = entry.value;
+      for (var i = 0; i < listaExercicios.length; i++) {
+        final exercicio = listaExercicios[i];
+        final imageUrl = exercicio['image'] ?? '';
+
+        if (!_urlValida(imageUrl)) {
+          final resultados =
+              await ExerciseSearch().fetchExercises(exercicio['name'] ?? '');
+          if (resultados.isNotEmpty) {
+            exercicio['image'] = resultados.first['image'] ?? '';
+            precisaSalvar = true;
+          } else {
+            exercicio['image'] = 'https://via.placeholder.com/60';
+          }
+        }
+      }
+    }
+
     setState(() {
       fichas.clear();
-      for (final doc in fichasSnapshot.docs) {
-        final nome = doc['name'];
-        final exercicios =
-            (doc['exercicios'] as List).map<Map<String, String>>((e) {
-          final map = Map<String, String>.from(e);
-
-          // Se não houver imagem ou estiver vazia, atribui uma imagem padrão
-          if (!map.containsKey('image') || map['image']!.trim().isEmpty) {
-            map['image'] =
-                'https://via.placeholder.com/60'; // ou outro GIF de academia
-          }
-
-          return map;
-        }).toList();
-
-        fichas[nome] = exercicios;
-      }
-      if (fichas.isNotEmpty) {
-        fichaSelecionada = fichas.keys.first;
-      } else {
-        fichas['Ficha A'] = [];
-        fichaSelecionada = 'Ficha A';
-      }
+      fichas.addAll(fichasTemporarias);
+      fichaSelecionada = fichas.keys.isNotEmpty ? fichas.keys.first : 'Ficha A';
     });
+
+    if (precisaSalvar) {
+      await salvarFichasFirestore();
+    }
+  }
+
+  bool _urlValida(String url) {
+    if (url.isEmpty) return false;
+    if (url.contains('not_found') || url.contains('expired')) return false;
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    if (!uri.hasAbsolutePath) return false;
+
+    return true;
   }
 
   void _adicionarFicha() {
@@ -260,7 +290,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 'image': index != null
                     ? fichas[fichaSelecionada]![index]['image'] ?? ''
                     : nomeController.text.isNotEmpty
-                        ? 'https://via.placeholder.com/60' // ou qualquer imagem padrão
+                        ? 'https://via.placeholder.com/60'
                         : '',
               };
               setState(() {
